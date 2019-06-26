@@ -1,5 +1,5 @@
 /*
- * baseline.c: Baseline implementation of Sparse Deep Neural Network 
+ * baseline.cpp: Baseline implementation of Sparse Deep Neural Network 
  * for Radix-Net sparse DNN generator
  * (C) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@pitt.edu
@@ -7,8 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
-#include <cstring> 
+
 
 #include <iostream>
 #include <fstream>
@@ -18,47 +17,10 @@
 #include <set>
 #include <chrono>
 
-template<typename Weight>
-struct CSC {
-    public:
-        uint64_t nnz;
-        uint32_t ncols;
-        void *IA;
-        void *JA;
-        void *A;
-        CSC(uint64_t nnz_, uint32_t ncols_) {
-            nnz = nnz_;
-            ncols = ncols_;
-            if(nnz and ncols) {
-                if((IA = mmap(nullptr, nnz * sizeof(uint32_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)) == (void*) -1) {    
-                    fprintf(stderr, "Error mapping memory\n");
-                    exit(1);
-                }
-                memset(IA, 0, nnz * sizeof(uint32_t));
-                
-                if((JA = mmap(nullptr, (ncols + 1) * sizeof(uint32_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)) == (void*) -1) {    
-                    fprintf(stderr, "Error mapping memory\n");
-                    exit(1);
-                }
-                memset(JA, 0, (ncols + 1) * sizeof(uint32_t));
-                
-                if((A = mmap(nullptr, nnz * sizeof(Weight), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)) == (void*) -1) {    
-                    fprintf(stderr, "Error mapping memory\n");
-                    exit(1);
-                }
-                memset(A, 0, nnz * sizeof(Weight));
-            }
-        }
-        ~CSC();   
-};
+#include "triple.hpp"
+#include "CompressedSpCol.hpp"
 
 
-template<typename Weight>
-struct Triple {
-    uint32_t row;
-    uint32_t col;
-    Weight weight;
-};
 
 
 //scores = inferenceReLUvec(layers,bias,featureVectors); 
@@ -139,7 +101,6 @@ int main(int argc, char **argv) {
     */
     
     //printf("fileSize = %lu\n", fileSize);
-    
     uint64_t nrows = 0; 
     uint64_t ncols = 0;
     std::vector<struct Triple<double>> featuresTriples;
@@ -160,14 +121,18 @@ int main(int argc, char **argv) {
     
     printf("INFO: Done  reading the features file %s\n", featuresFile.c_str());
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrows, ncols, featuresTriples.size());
+    ColSort<double> f_col;
+    if(featuresTriples.size()) {
+        std::sort(featuresTriples.begin(), featuresTriples.end(), f_col);
+    }
+    
+    
     uint32_t NfeatureVectors = Nneurons;
     
-    //struct csc featuresCsc;
+    struct CSC<double> featuresCsc(featuresTriples.size(), NfeatureVectors);
     
-    
-    
-    
-    exit(0);
+    featuresCsc.populate(featuresTriples);
+    return(0);
     
     uint32_t maxLayers = atoi(argv[4]);
     std::vector<uint32_t> maxLayersVector = {120, 480, 1192};
