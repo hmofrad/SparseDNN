@@ -1,5 +1,5 @@
 /*
- * serial.c: Serial implementation of Sparse Deep Neural Network 
+ * baseline.c: Baseline implementation of Sparse Deep Neural Network 
  * for Radix-Net sparse DNN generator
  * (C) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@pitt.edu
