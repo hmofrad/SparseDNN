@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+
 
 #include <iostream>
 #include <fstream>
@@ -30,6 +32,8 @@ int main(int argc, char **argv) {
         fprintf(stderr, "USAGE: %s -n <Nneurons> -l <maxLayers> <path_to_input> <path_to_dnn>\n", argv[0]);
         exit(1);         
     }
+    struct timeval t0, t1;
+
     
     uint32_t Nneurons = atoi(argv[2]);
     std::set<uint32_t> NneuronsSet = {1024, 4096, 16384, 65536};
@@ -85,7 +89,7 @@ int main(int argc, char **argv) {
     fin.close();
     
     printf("INFO: Done  reading the input file %s\n", inputFile.c_str());
-    printf("INFO: Input file is %lu x %lu\n", nrows, ncols);
+    printf("INFO: Input file is %lu x %lu, nnz=%lu\n", nrows, ncols, inputTriples.size());
     uint32_t NfeatureVectors = Nneurons;
     
     uint32_t maxLayers = atoi(argv[4]);
@@ -126,9 +130,10 @@ int main(int argc, char **argv) {
     layersTriplesVector.resize(maxLayers);
     struct Triple<double> layerTriple;  
   
+    gettimeofday(&t0, 0);
     for(uint32_t i = 0; i < maxLayers; i++) {  
         std::string layerFile = ((std::string) argv[6]) + "/neuron" + std::to_string(Nneurons) + "/n" + std::to_string(Nneurons) + "-l" + std::to_string(i+1) + ".tsv";
-        printf("INFO: Start reading the layer file %s\n", layerFile.c_str());
+        //printf("INFO: Start reading the layer file %s\n", layerFile.c_str());
         fin.clear();
         fin.open(layerFile.c_str());
         if(!fin.is_open()) {
@@ -150,10 +155,19 @@ int main(int argc, char **argv) {
         }
         fin.close();
         DNNedges += layersTriples.size();
-        printf("INFO: Done  reading the layer file %s\n", layerFile.c_str());
-        printf("INFO: Layer file is %lu x %lu\n", nrows, ncols);
+        //printf("INFO: Done  reading the layer file %s\n", layerFile.c_str());
+        //printf("INFO: Layer file is %lu x %lu, nnz=%lu\n", nrows, ncols, layersTriples.size());
     }
-    printf("%lu\n", DNNedges);
+    
+    //printf("%lu\n", DNNedges);
+    gettimeofday(&t1, 0);
+    long readLayerTime = (t1.tv_sec - t0.tv_sec);
+    double readLayerRate = DNNedges/readLayerTime;
+    
+        //disp(['DNN neurons/layer: ' num2str(Nneuron(i)) ', layers: ' num2str(maxLayers(j)) ', edges: ' num2str(DNNedges)]);
+    //disp(['Read time (sec): ' num2str(readLayerTime) ', read rate (edges/sec): ' num2str(readLayerRate)]);
+    printf("DNN neurons/layer: %d, layers:%d, edges:%lu\n", Nneurons, maxLayers, DNNedges);
+    printf("Read time (sec): %f %lu\n", readLayerRate, readLayerTime);
     
 //    for(uint32_t i = 0; i < maxLayers; i++) {  
   //  printf("%lu %lu %d %d %f\n", i, layersTriplesVector[i].size(), layersTriplesVector[i][0].row, layersTriplesVector[i][0].col, layersTriplesVector[i][0].weight);
