@@ -25,31 +25,71 @@
 
 //scores = inferenceReLUvec(layers,bias,featureVectors); 
 
-void inferenceReLUvec(std::vector<std::vector<struct Triple<double>>> &layersTriples, std::vector<std::vector<struct Triple<double>>> &biasesTriples, std::vector<struct Triple<double>> &featuresTriples) {
-    auto &W = layersTriples;
-    auto &B = biasesTriples;
-    auto &Y0 = featuresTriples;
-    printf("%lu %lu %lu\n", W.size(), B.size(), Y0.size());
+//void inferenceReLUvec(std::vector<std::vector<struct Triple<double>>> &layersTriples, std::vector<std::vector<struct Triple<double>>> &biasesTriples, std::vector<struct Triple<double>> &featuresTriples) {
+template<typename Weight>    
+void inferenceReLUvec(std::vector<struct CSC<double>*> &layersCSC, std::vector<struct CSC<double>*> &biasesCSC, struct CSC<double> &featuresCSC) {    
+    auto &W = layersCSC;
+    auto &B = biasesCSC;
+    auto &Y0 = featuresCSC;
+    //printf("%lu %lu %lu\n", W.size(), B.size(), Y0.size());
     double YMAX = 32;
     auto &Y = Y0;
     //for(uint32_t i = 0; i < W.size(); i++) {
     for(uint32_t i = 0; i < 1; i++) {
         
-        printf("%d %lu\n", i, W[i].size());
-        
-        for(auto &triple: W[i]) {
-            printf("row=%d col=%d weight=%f\n", triple.row, triple.col, triple.weight);
-            break;
-        }
         
         
-        printf("%d %lu\n", i, Y.size());
+  //      for(auto &triple: W[i]) {
+//            printf("row=%d col=%d weight=%f\n", triple.row, triple.col, triple.weight);
+          //  break;
+        //}
         
-        for(auto &triple: Y) {
-            printf("row=%d col=%d weight=%f\n", triple.row, triple.col, triple.weight);
-            break;
-        }
+        
+        printf("Y=%d %lu %d\n", i, Y.nnz, Y.ncols);
+        
+        //for(auto &triple: Y) {
+           // printf("row=%d col=%d weight=%f\n", triple.row, triple.col, triple.weight);
+          //  break;
+        //}
          //Z = Y*W{i};
+        
+        uint32_t ncols = Y.ncols;        
+        uint32_t *Y_IA = (uint32_t *) Y.IA;
+        uint32_t *Y_JA = (uint32_t *) Y.JA;
+        double   *Y_A  = (double   *) Y.A;
+        
+        int kk = 0;
+        for(uint32_t j = 0; j < ncols; j++) {
+            printf("j=%d\n", j);
+            for(uint32_t k = Y_JA[j]; k < Y_JA[j + 1]; k++) {
+                printf("    i=%d, j=%d, value=%f\n", Y_IA[k], j, Y_A[k]);
+                kk = 1;
+                break;
+            }
+            if(kk) break;
+        }
+        auto *W_ = W[i];
+        printf(">>>>W=%d %lu %d %p\n", i, W_->nnz, W_->ncols, W_->IA);
+        //W_->walk();
+        
+        printf(">>>>W=%d %lu %d\n", i, W[i]->nnz, W[i]->ncols);
+        ncols = W[i]->ncols;
+        uint32_t *W_IA = (uint32_t *) W[i]->IA;
+        uint32_t *W_JA = (uint32_t *) W[i]->JA;
+        double   *W_A  = (double   *) W[i]->A;
+        for(uint32_t j = 0; j < ncols; j++) {
+            printf("j=%d %d\n", j,  W_JA[j + 1] -  W_JA[j]);
+            for(uint32_t k = W_JA[j]; k < W_JA[j + 1]; k++) {
+                printf("    i=%d, j=%d, value=%f\n", W_IA[k], j, W_A[k]);
+                //break;
+                kk = 0;
+                break;
+            }
+            if(!kk) break;
+        }
+        
+        
+    
         
     }
 }    
@@ -129,8 +169,9 @@ int main(int argc, char **argv) {
     
     uint32_t NfeatureVectors = Nneurons;
     
-    struct CSC<double> featuresCSC(featuresTriples.size(), NfeatureVectors);
+    struct CSC<double> featuresCSC(featuresTriples.size(), Nneurons + 1);
     featuresCSC.populate(featuresTriples);
+    //featuresCSC.walk();
     //return(0);
     
     uint32_t maxLayers = atoi(argv[4]);
@@ -178,8 +219,8 @@ int main(int argc, char **argv) {
     
     struct Triple<double> biasTriple;  
     
-    std::vector<struct CSC<double>> layersCSC;
-    std::vector<struct CSC<double>> biasesCSC;
+    std::vector<struct CSC<double>*> layersCSC;
+    std::vector<struct CSC<double>*> biasesCSC;
   
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
@@ -215,10 +256,14 @@ int main(int argc, char **argv) {
         if(layerTriples.size()) {
             std::sort(layerTriples.begin(), layerTriples.end(), f_col);
         }
-        struct CSC<double> layerCSC(layerTriples.size(), Nneurons);
-        layerCSC.populate(layerTriples);
+        struct CSC<double> *layerCSC = new struct CSC<double>(layerTriples.size(), Nneurons + 1);
+        //layerCSC = new CSC(layerTriples.size(), Nneurons);
+        //layerCSC->populate(layerTriples);
+        //layerCSC = new struct CSC<double>(layerTriples.size(), Nneurons);
+        layerCSC->populate(layerTriples);
         //layerCSC.walk();
         layersCSC.push_back(layerCSC);
+        //layersCSC[i] = layerCSC;
         layerTriples.clear();
         layerTriples.shrink_to_fit();
         
@@ -233,9 +278,9 @@ int main(int argc, char **argv) {
         if(biasTriples.size()) {
             std::sort(biasTriples.begin(), biasTriples.end(), f_col);
         }
-        struct CSC<double> biasCSC(biasTriples.size(), Nneurons);
-        biasCSC.populate(biasTriples);
-        //layerCSC.walk();
+        struct CSC<double> *biasCSC = new struct CSC<double>(biasTriples.size(), Nneurons + 1);
+        biasCSC->populate(biasTriples);
+        //biasCSC.walk();
         biasesCSC.push_back(biasCSC);
         biasTriples.clear();
         biasTriples.shrink_to_fit();
@@ -275,8 +320,17 @@ int main(int argc, char **argv) {
     printf("DNN neurons/layer: %d, layers:%d, edges:%lu\n", Nneurons, maxLayers, DNNedges);
     printf("Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
     //inferenceReLUvec(layersTriples, biasesTriples, featuresTriples);
+    //printf(">>>>1111 W=%d %lu %d %lu\n", 1, layersCSC[0]->nnz, layersCSC[0]->ncols, layersCSC.size());
+    //layersCSC[0]->walk();
+    //printf(">>>>\n");
+    inferenceReLUvec<double>(layersCSC, biasesCSC, featuresCSC);
     //printf(" %lu %d %d %f\n", biasVector.size(), biasVector[0][1023].row, biasVector[0][1023].col, biasVector[0][1023].weight);
     //scores = inferenceReLUvec(layers,bias,featureVectors); 
+    
+    for(uint32_t i = 0; i < maxLayers; i++) {  
+        delete layersCSC[i];
+        delete biasesCSC[i];
+    }
     
     return(0);
 }
