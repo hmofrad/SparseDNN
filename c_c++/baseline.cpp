@@ -129,10 +129,9 @@ int main(int argc, char **argv) {
     
     uint32_t NfeatureVectors = Nneurons;
     
-    struct CSC<double> featuresCsc(featuresTriples.size(), NfeatureVectors);
-    
-    featuresCsc.populate(featuresTriples);
-    return(0);
+    struct CSC<double> featuresCSC(featuresTriples.size(), NfeatureVectors);
+    featuresCSC.populate(featuresTriples);
+    //return(0);
     
     uint32_t maxLayers = atoi(argv[4]);
     std::vector<uint32_t> maxLayersVector = {120, 480, 1192};
@@ -167,13 +166,20 @@ int main(int argc, char **argv) {
   
   
     uint64_t DNNedges = 0;
-    std::vector<std::vector<struct Triple<double>>> layersTriples;
-    layersTriples.resize(maxLayers);
+    //std::vector<std::vector<struct Triple<double>>> layersTriples;
+    //layersTriples.resize(maxLayers);
+    std::vector<struct Triple<double>> layerTriples;
+    
     struct Triple<double> layerTriple;  
     
-    std::vector<std::vector<struct Triple<double>>> biasesTriples;
-    biasesTriples.resize(maxLayers);
+    //std::vector<std::vector<struct Triple<double>>> biasesTriples;
+    //biasesTriples.resize(maxLayers);
+    std::vector<struct Triple<double>> biasTriples;
+    
     struct Triple<double> biasTriple;  
+    
+    std::vector<struct CSC<double>> layersCSC;
+    std::vector<struct CSC<double>> biasesCSC;
   
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
@@ -188,7 +194,7 @@ int main(int argc, char **argv) {
         }
         nrows = 0;
         ncols = 0;
-        auto &layerTriples = layersTriples[i];
+        //auto &layerTriples = layersTriples[i];
         while (std::getline(fin, line)) {
             iss.clear();
             iss.str(line);
@@ -202,16 +208,62 @@ int main(int argc, char **argv) {
         fin.close();
         DNNedges += layerTriples.size();
         
-        auto &biasTriples = biasesTriples[i];
+        
+        //printf("INFO: Done  reading the layer file %s\n", layerFile.c_str());
+        //printf("INFO: Layer file is %lu x %lu, nnz=%lu\n", nrows, ncols, layersTriples.size());
+        
+        if(layerTriples.size()) {
+            std::sort(layerTriples.begin(), layerTriples.end(), f_col);
+        }
+        struct CSC<double> layerCSC(layerTriples.size(), Nneurons);
+        layerCSC.populate(layerTriples);
+        //layerCSC.walk();
+        layersCSC.push_back(layerCSC);
+        layerTriples.clear();
+        layerTriples.shrink_to_fit();
+        
+        //auto &biasTriples = biasesTriples[i];
         for(uint32_t j = 0; j < Nneurons; j++) {
             biasTriple.row = 1;
             biasTriple.col = j+1;
             biasTriple.weight = biasValue;
             biasTriples.push_back(biasTriple);
         }
-        //printf("INFO: Done  reading the layer file %s\n", layerFile.c_str());
-        //printf("INFO: Layer file is %lu x %lu, nnz=%lu\n", nrows, ncols, layersTriples.size());
+        
+        if(biasTriples.size()) {
+            std::sort(biasTriples.begin(), biasTriples.end(), f_col);
+        }
+        struct CSC<double> biasCSC(biasTriples.size(), Nneurons);
+        biasCSC.populate(biasTriples);
+        //layerCSC.walk();
+        biasesCSC.push_back(biasCSC);
+        biasTriples.clear();
+        biasTriples.shrink_to_fit();
     }
+    
+    /*
+    
+    //layersCSC.resize(maxLayers);
+    for(uint32_t i = 0; i < maxLayers; i++) {
+        auto &layerTriples = layersTriples[i];
+        //auto &layerCSC = layersCSC[i];
+        if(layerTriples.size()) {
+            std::sort(layerTriples.begin(), layerTriples.end(), f_col);
+        }
+        struct CSC<double> layerCSC(layerTriples.size(), Nneurons);
+        layerCSC.populate(layerTriples);
+        //layerCSC.walk();
+        layersCSC.push_back(layerCSC);
+        //layerCSC(layerTriples.size(), Nneurons);
+        //layerCSC.populate(layersTriples);
+    }
+    */
+    
+        
+    //for(uint32_t i = 0; i < maxLayers; i++) {
+    //    printf("%d %lu %d %lu\n", i, layersCSC[i].nnz, layersCSC[i].ncols, layersTriples[i].size());
+    //}        
+    
     auto finish = std::chrono::high_resolution_clock::now();
     printf("INFO: Done  reading %d layer files\n", maxLayers);
     double readLayerTime = (double)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
@@ -222,7 +274,7 @@ int main(int argc, char **argv) {
     double readLayerRate = (double) DNNedges/readLayerTime;
     printf("DNN neurons/layer: %d, layers:%d, edges:%lu\n", Nneurons, maxLayers, DNNedges);
     printf("Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
-    inferenceReLUvec(layersTriples, biasesTriples, featuresTriples);
+    //inferenceReLUvec(layersTriples, biasesTriples, featuresTriples);
     //printf(" %lu %d %d %f\n", biasVector.size(), biasVector[0][1023].row, biasVector[0][1023].col, biasVector[0][1023].weight);
     //scores = inferenceReLUvec(layers,bias,featureVectors); 
     
