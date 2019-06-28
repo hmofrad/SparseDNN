@@ -173,12 +173,25 @@ int main(int argc, char **argv) {
     
     uint32_t NfeatureVectors = Nneurons;
     
-    struct CSC<double> featuresCSC(nrows + 1, Nneurons + 1, featuresTriples.size()); // Pad the input
-    featuresCSC.populate(featuresTriples);
+    //struct CompressedSpMat<double>* featuresCSC(nrows + 1, Nneurons + 1, featuresTriples.size()) = nullptr;
+    //struct CompressedSpMat<double> *featuresCSC = nullptr;
+    //featuresCSC = new CSC<double>((nrows + 1), (Nneurons + 1), featuresTriples.size());
+    //featuresCSC->populate(featuresTriples);
+    //featuresCSC->walk();
+    //delete featuresCSC;
+    //printf("nnz = %d\n", featuresCSC->numnonzeros());
+    //struct CompressedSpMat<double> featuresCSC((nrows + 1), (Nneurons + 1), featuresTriples.size());
+    
+    //struct CSR<double> featuresCSC(nrows + 1, Nneurons + 1, featuresTriples.size()); // Pad the input
+    //featuresCSC.populate(featuresTriples);
     //featuresCSC.walk();
     //delete featuresCSC.
     //printf("exiting\n");
-    //return(0);
+    
+    struct CompressedSpMat<double> sparse((nrows + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::dual);
+    featuresTriples.clear();
+    featuresTriples.shrink_to_fit();
+    return(0);
     
     uint32_t maxLayers = atoi(argv[4]);
     std::vector<uint32_t> maxLayersVector = {120, 480, 1192};
@@ -329,7 +342,7 @@ int main(int argc, char **argv) {
     //printf(">>>>1111 W=%d %lu %d %lu\n", 1, layersCSC[0]->nnz, layersCSC[0]->ncols, layersCSC.size());
     //layersCSC[0]->walk();
     //printf(">>>>\n");
-    inferenceReLUvec<double>(layersCSC, biasesCSC, featuresCSC);
+    //inferenceReLUvec<double>(layersCSC, biasesCSC, featuresCSC);
     //printf(" %lu %d %d %f\n", biasVector.size(), biasVector[0][1023].row, biasVector[0][1023].col, biasVector[0][1023].weight);
     //scores = inferenceReLUvec(layers,bias,featureVectors); 
     
