@@ -34,17 +34,6 @@ struct CompressedSpMat {
 };
 
 template<typename Weight>
-CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
-    nrows = nrows_;
-    ncols = ncols_;
-    nnz   = nnz_;
-    IA = nullptr;
-    JA = nullptr;
-    A  = nullptr;
-    printf("parent %d\n", nnz);
-}
-
-template<typename Weight>
 CompressedSpMat<Weight>::~CompressedSpMat(){
     delete IA_blk;
     IA = nullptr;
@@ -52,6 +41,7 @@ CompressedSpMat<Weight>::~CompressedSpMat(){
     JA = nullptr;
     delete  A_blk;
     A  = nullptr;
+    printf("parent destruct\n");
 }
 
 template<typename Weight>
@@ -94,17 +84,18 @@ CSC1<Weight>::CSC1(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
     A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight));
 }
 
-/*
+
 template<typename Weight>
-CSC<Weight>::~CSC(){
+CSC1<Weight>::~CSC1(){
     delete IA_blk;
     IA = nullptr;
     delete JA_blk;
     JA = nullptr;
     delete  A_blk;
     A  = nullptr;
+    printf("chaild destruct\n");
 }
-*/
+
 
 template<typename Weight>
 void CSC1<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
