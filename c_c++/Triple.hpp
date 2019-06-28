@@ -15,8 +15,16 @@ struct Triple {
 };
 
 template <typename Weight>
+struct RowSort
+{
+    bool operator()(const struct Triple<Weight> &a, const struct Triple<Weight> &b) {
+        return(false); // To suppress -Wreturn-type
+    }
+};
+
+template <typename Weight>
 struct ColSort {
-    bool operator()(const struct Triple<Weight>& a, const struct Triple<Weight>& b) {
+    bool operator()(const struct Triple<Weight> &a, const struct Triple<Weight> &b) {
         return((a.col == b.col) ? (a.row < b.row) : (a.col < b.col));
         return(false); // To suppress -Wreturn-type
     }
