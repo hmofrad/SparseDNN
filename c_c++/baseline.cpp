@@ -28,7 +28,7 @@
 //void inferenceReLUvec(std::vector<std::vector<struct Triple<double>>> &layersTriples, std::vector<std::vector<struct Triple<double>>> &biasesTriples, std::vector<struct Triple<double>> &featuresTriples) {
 template<typename Weight>    
 void inferenceReLUvec(std::vector<struct CSC<double>*> &layersCSC, std::vector<struct CSC<double>*> &biasesCSC, struct CSC<double> &featuresCSC) {    
-    auto &W = layersCSC;
+    auto &W1 = layersCSC;
     auto &B = biasesCSC;
     auto &Y0 = featuresCSC;
     //printf("%lu %lu %lu\n", W.size(), B.size(), Y0.size());
@@ -36,7 +36,7 @@ void inferenceReLUvec(std::vector<struct CSC<double>*> &layersCSC, std::vector<s
     auto &Y = Y0;
     //for(uint32_t i = 0; i < W.size(); i++) {
     for(uint32_t i = 0; i < 1; i++) {
-        
+        auto *W = W1[i];
         
         
   //      for(auto &triple: W[i]) {
@@ -44,15 +44,18 @@ void inferenceReLUvec(std::vector<struct CSC<double>*> &layersCSC, std::vector<s
           //  break;
         //}
         
-        
-        printf("Y=%d %lu %d\n", i, Y.nnz, Y.ncols);
+        //Z = Y*W{i};
+        printf("Y: nrows=%d ncols=%d nnz=%lu\n", Y.nrows, Y.ncols, Y.nnz);
+        printf("W: nrows=%d ncols=%d nnz=%lu\n", W->nrows, W->ncols, W->nnz);
         
         //for(auto &triple: Y) {
            // printf("row=%d col=%d weight=%f\n", triple.row, triple.col, triple.weight);
           //  break;
         //}
-         //Z = Y*W{i};
+         
+        //printf("row=%d col=%d weight=%f\n", Y.);
         
+        /*
         uint32_t ncols = Y.ncols;        
         uint32_t *Y_IA = (uint32_t *) Y.IA;
         uint32_t *Y_JA = (uint32_t *) Y.JA;
@@ -74,9 +77,9 @@ void inferenceReLUvec(std::vector<struct CSC<double>*> &layersCSC, std::vector<s
         
         printf(">>>>W=%d %lu %d\n", i, W[i]->nnz, W[i]->ncols);
         ncols = W[i]->ncols;
-        uint32_t *W_IA = (uint32_t *) W[i]->IA;
-        uint32_t *W_JA = (uint32_t *) W[i]->JA;
-        double   *W_A  = (double   *) W[i]->A;
+        uint32_t *W_IA = (uint32_t *) W_->IA;
+        uint32_t *W_JA = (uint32_t *) W_->JA;
+        double   *W_A  = (double   *) W_->A;
         for(uint32_t j = 0; j < ncols; j++) {
             printf("j=%d %d\n", j,  W_JA[j + 1] -  W_JA[j]);
             for(uint32_t k = W_JA[j]; k < W_JA[j + 1]; k++) {
@@ -87,6 +90,7 @@ void inferenceReLUvec(std::vector<struct CSC<double>*> &layersCSC, std::vector<s
             }
             if(!kk) break;
         }
+        */
         
         
     
@@ -169,7 +173,7 @@ int main(int argc, char **argv) {
     
     uint32_t NfeatureVectors = Nneurons;
     
-    struct CSC<double> featuresCSC(featuresTriples.size(), Nneurons + 1);
+    struct CSC<double> featuresCSC(nrows + 1, Nneurons + 1, featuresTriples.size()); // Pad the input
     featuresCSC.populate(featuresTriples);
     //featuresCSC.walk();
     //return(0);
@@ -256,7 +260,7 @@ int main(int argc, char **argv) {
         if(layerTriples.size()) {
             std::sort(layerTriples.begin(), layerTriples.end(), f_col);
         }
-        struct CSC<double> *layerCSC = new struct CSC<double>(layerTriples.size(), Nneurons + 1);
+        struct CSC<double> *layerCSC = new struct CSC<double>(nrows + 1, Nneurons + 1, layerTriples.size());
         //layerCSC = new CSC(layerTriples.size(), Nneurons);
         //layerCSC->populate(layerTriples);
         //layerCSC = new struct CSC<double>(layerTriples.size(), Nneurons);
@@ -278,7 +282,7 @@ int main(int argc, char **argv) {
         if(biasTriples.size()) {
             std::sort(biasTriples.begin(), biasTriples.end(), f_col);
         }
-        struct CSC<double> *biasCSC = new struct CSC<double>(biasTriples.size(), Nneurons + 1);
+        struct CSC<double> *biasCSC = new struct CSC<double>(nrows + 1, Nneurons + 1, biasTriples.size());
         biasCSC->populate(biasTriples);
         //biasCSC.walk();
         biasesCSC.push_back(biasCSC);
