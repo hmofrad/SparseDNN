@@ -188,9 +188,12 @@ int main(int argc, char **argv) {
     //delete featuresCSC.
     //printf("exiting\n");
     
-    struct CompressedSpMat<double> sparse((nrows + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::dual);
+    struct CompressedSpMat<double> featuresCSC((nrows + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::dual);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
+    //featuresCSC.csc->walk();
+    //featuresCSC.csr->walk();
+    //printf("csc=%d csr=%d\n", featuresCSC.csc->nbytes, featuresCSC.csr->nbytes);
     return(0);
     
     uint32_t maxLayers = atoi(argv[4]);
