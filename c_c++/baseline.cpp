@@ -18,7 +18,7 @@
 #include <chrono>
 
 #include "triple.hpp"
-#include "CompressedSpCol.hpp"
+#include "CompressedSpMat.hpp"
 
 
 
@@ -45,8 +45,8 @@ void inferenceReLUvec(std::vector<struct CSC<double>*> &layersCSC, std::vector<s
         //}
         
         //Z = Y*W{i};
-        printf("Y: nrows=%d ncols=%d nnz=%lu\n", Y.nrows, Y.ncols, Y.nnz);
-        printf("W: nrows=%d ncols=%d nnz=%lu\n", W->nrows, W->ncols, W->nnz);
+        printf("Y: nrows=%d ncols=%d nnz=%lu %d\n", Y.nrows, Y.ncols, Y.nnz, Y.JA[100]);
+        printf("W: nrows=%d ncols=%d nnz=%lu %d\n", W->nrows, W->ncols, W->nnz, W->JA[10]);
         
         //for(auto &triple: Y) {
            // printf("row=%d col=%d weight=%f\n", triple.row, triple.col, triple.weight);
@@ -165,10 +165,10 @@ int main(int argc, char **argv) {
     
     printf("INFO: Done  reading the features file %s\n", featuresFile.c_str());
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrows, ncols, featuresTriples.size());
-    ColSort<double> f_col;
-    if(featuresTriples.size()) {
-        std::sort(featuresTriples.begin(), featuresTriples.end(), f_col);
-    }
+    //ColSort<double> f_col;
+    //if(featuresTriples.size()) {
+    //    std::sort(featuresTriples.begin(), featuresTriples.end(), f_col);
+    //}/
     
     
     uint32_t NfeatureVectors = Nneurons;
@@ -176,6 +176,8 @@ int main(int argc, char **argv) {
     struct CSC<double> featuresCSC(nrows + 1, Nneurons + 1, featuresTriples.size()); // Pad the input
     featuresCSC.populate(featuresTriples);
     //featuresCSC.walk();
+    //delete featuresCSC.
+    //printf("exiting\n");
     //return(0);
     
     uint32_t maxLayers = atoi(argv[4]);
@@ -257,9 +259,9 @@ int main(int argc, char **argv) {
         //printf("INFO: Done  reading the layer file %s\n", layerFile.c_str());
         //printf("INFO: Layer file is %lu x %lu, nnz=%lu\n", nrows, ncols, layersTriples.size());
         
-        if(layerTriples.size()) {
-            std::sort(layerTriples.begin(), layerTriples.end(), f_col);
-        }
+        //if(layerTriples.size()) {
+        //    std::sort(layerTriples.begin(), layerTriples.end(), f_col);
+        //}
         struct CSC<double> *layerCSC = new struct CSC<double>(nrows + 1, Nneurons + 1, layerTriples.size());
         //layerCSC = new CSC(layerTriples.size(), Nneurons);
         //layerCSC->populate(layerTriples);
@@ -279,9 +281,9 @@ int main(int argc, char **argv) {
             biasTriples.push_back(biasTriple);
         }
         
-        if(biasTriples.size()) {
-            std::sort(biasTriples.begin(), biasTriples.end(), f_col);
-        }
+        //if(biasTriples.size()) {
+        //    std::sort(biasTriples.begin(), biasTriples.end(), f_col);
+        //}
         struct CSC<double> *biasCSC = new struct CSC<double>(nrows + 1, Nneurons + 1, biasTriples.size());
         biasCSC->populate(biasTriples);
         //biasCSC.walk();
