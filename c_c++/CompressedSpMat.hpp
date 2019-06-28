@@ -11,12 +11,56 @@
 
 #include "Allocator.hpp"
 #include "triple.hpp"
-/*
+
 template<typename Weight>
 struct CompressedSpMat {
     public:
-        CSC() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; };
-        ~CSC() {}
+        CompressedSpMat() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; }
+        ~CompressedSpMat();
+        virtual void populate(std::vector<struct Triple<Weight>> &triples) {}
+        virtual void walk() {}
+        uint64_t numnonzeros() const { return(nnz); }
+        uint64_t numofrows()   const { return(nrows); }
+        uint64_t numofcols()   const { return(ncols); }
+        uint32_t nrows;
+        uint32_t ncols;
+        uint64_t nnz;
+        uint32_t *IA; // Rows
+        uint32_t *JA; // Cols
+        Weight   *A;  // Vals
+        struct Data_Block<uint32_t> *IA_blk;
+        struct Data_Block<uint32_t> *JA_blk;
+        struct Data_Block<Weight>   *A_blk;
+};
+
+template<typename Weight>
+CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
+    nrows = nrows_;
+    ncols = ncols_;
+    nnz   = nnz_;
+    IA = nullptr;
+    JA = nullptr;
+    A  = nullptr;
+    printf("parent %d\n", nnz);
+}
+
+template<typename Weight>
+CompressedSpMat<Weight>::~CompressedSpMat(){
+    delete IA_blk;
+    IA = nullptr;
+    delete JA_blk;
+    JA = nullptr;
+    delete  A_blk;
+    A  = nullptr;
+}
+
+template<typename Weight>
+struct CSC1 : public CompressedSpMat<Weight> {
+    public:
+        //CSC() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; }
+        CSC1(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
+        //CSC1();
+        //~CSC();
         virtual void populate(std::vector<struct Triple<Weight>> &triples);
         virtual void walk();
         uint64_t numnonzeros() const { return(nnz); };
@@ -33,13 +77,79 @@ struct CompressedSpMat {
         struct Data_Block<Weight>  *A_blk;
         
 };
+
+template<typename Weight>
+CSC1<Weight>::CSC1(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
+    /*
+    nrows = nrows_;
+    ncols = ncols_;
+    nnz   = nnz_;
+    IA = nullptr;
+    JA = nullptr;
+    A  = nullptr;
+    */
+    printf("child %d\n", nnz);
+    IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t));
+    JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t));
+    A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight));
+}
+
+/*
+template<typename Weight>
+CSC<Weight>::~CSC(){
+    delete IA_blk;
+    IA = nullptr;
+    delete JA_blk;
+    JA = nullptr;
+    delete  A_blk;
+    A  = nullptr;
+}
 */
+
+template<typename Weight>
+void CSC1<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
+    if(ncols and nnz) {
+        ColSort<Weight> f_col;
+        std::sort(triples.begin(), triples.end(), f_col);
+        
+        uint32_t i = 0;
+        uint32_t j = 1;
+        JA[0] = 0;
+        for(auto& triple : triples) {
+            while((j - 1) != triple.col) {
+                j++;
+                JA[j] = JA[j - 1];
+            }                  
+            JA[j]++;
+            IA[i] = triple.row;
+            A[i] = triple.weight;
+            i++;
+        }
+        
+        while((j + 1) < ncols) {
+            j++;
+            JA[j] = JA[j - 1];
+        }
+    }
+}
+
+template<typename Weight>
+void CSC1<Weight>::walk() {
+    for(uint32_t j = 0; j < ncols; j++) {
+        printf("j=%d\n", j);
+        for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
+            printf("    i=%d, j=%d, value=%f\n", IA[i], j, A[i]);
+        }
+        
+    }
+}
+
 
 
 template<typename Weight>
 struct CSC {
     public:
-        CSC() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; };
+        CSC() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; }
         CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
         ~CSC();
         void populate(std::vector<struct Triple<Weight>> &triples);
@@ -120,10 +230,11 @@ void CSC<Weight>::walk() {
     }
 }
 
+
 template<typename Weight>
 struct CSR {
     public:
-        CSR() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; };
+        CSR() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; }
         CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
         ~CSR();
         void populate(std::vector<struct Triple<Weight>> &triples);
