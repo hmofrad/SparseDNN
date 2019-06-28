@@ -14,23 +14,25 @@
 template<typename Weight>
 struct CSC {
     public:
-        CSC() {nnz = 0; ncols = 0;};
-        CSC(uint64_t nnz_,  uint32_t ncols_);
+        CSC() {nrows = 0, ncols = 0; nnz = 0;};
+        CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
         ~CSC();
         void populate(std::vector<struct Triple<Weight>> triples);
         void walk();
-        uint64_t nnz;
+        uint32_t nrows;
         uint32_t ncols;
+        uint64_t nnz;
         uint32_t *IA; // Rows
         uint32_t *JA; // Cols
         Weight *A;  // Vals
 };
 
 template<typename Weight>
-CSC<Weight>::CSC(uint64_t nnz_, uint32_t ncols_) {
-    nnz = nnz_;
+CSC<Weight>::CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
+    nrows = nrows_;
     ncols = ncols_;
-    if(nnz and ncols) {
+    nnz   = nnz_;
+    if(ncols and nnz) {
         if((IA = (uint32_t *) mmap(nullptr, nnz * sizeof(uint32_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)) == (void*) -1) {    
             fprintf(stderr, "Error mapping memory\n");
             exit(1);
@@ -53,7 +55,7 @@ CSC<Weight>::CSC(uint64_t nnz_, uint32_t ncols_) {
 
 template<typename Weight>
 CSC<Weight>::~CSC(){
-    if(nnz and ncols) {
+    if(ncols and nnz) {
         if(munmap(A, nnz * sizeof(uint32_t)) == -1) {
             fprintf(stderr, "Error unmapping memory\n");
             exit(1);
@@ -114,8 +116,6 @@ void CSC<Weight>::walk() {
     for(uint32_t j = 0; j < ncols; j++) {
         printf("j=%d\n", j);
         for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
-            IA[i];
-            A[i];
             printf("    i=%d, j=%d, value=%f\n", IA[i], j, A[i]);
         }
         
