@@ -11,6 +11,30 @@
 
 #include "Allocator.hpp"
 #include "triple.hpp"
+/*
+template<typename Weight>
+struct CompressedSpMat {
+    public:
+        CSC() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; };
+        ~CSC() {}
+        virtual void populate(std::vector<struct Triple<Weight>> &triples);
+        virtual void walk();
+        uint64_t numnonzeros() const { return(nnz); };
+        uint64_t numofrows()   const { return(nrows); };
+        uint64_t numofcols()   const { return(ncols); };
+        uint32_t nrows;
+        uint32_t ncols;
+        uint64_t nnz;
+        uint32_t *IA; // Rows
+        uint32_t *JA; // Cols
+        Weight   *A;  // Vals
+        struct Data_Block<uint32_t> *IA_blk;
+        struct Data_Block<uint32_t> *JA_blk;
+        struct Data_Block<Weight>  *A_blk;
+        
+};
+*/
+
 
 template<typename Weight>
 struct CSC {
@@ -153,7 +177,6 @@ void CSR<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
         uint32_t j = 0;
         IA[0] = 0;
         for(auto& triple : triples) {
-            //printf("%d %d %d %d\n", triple.row, triple.col,i ,j);
             while((i - 1) != triple.row) {
                 i++;
                 IA[i] = IA[i - 1];
@@ -162,9 +185,7 @@ void CSR<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
             JA[j] = triple.col;
             A[j] = triple.weight;
             j++;
-         //   */
         }
-        printf("xxxx\n");
         while((i + 1) < nrows) {
             i++;
             IA[i] = IA[i - 1];
