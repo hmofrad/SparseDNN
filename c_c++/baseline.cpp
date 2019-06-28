@@ -116,16 +116,6 @@ int main(int argc, char **argv) {
     }    
     double biasValue = neuralNetBias[idxN];
     
-    //std::vector<uint32_t> NneuronsVector = {1024, 4096, 16384, 65536};
-    //if(not (NneuronsSet.count(Nneurons))) {
-      ///  fprintf(stderr, "Invalid number of neurons %d\n", Nneurons);
-        //exit(1);
-    //}
-    
-
-    
-    //
-    
     std::string featuresFile = ((std::string) argv[5]) + "/sparse-images-" + std::to_string(Nneurons) + ".tsv";
     printf("INFO: Start reading the features file %s\n", featuresFile.c_str());
     std::ifstream fin(featuresFile.c_str());
@@ -133,18 +123,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Error: Opening %s\n", featuresFile.c_str());
         exit(1);
     }
-    
-    
-    /*
-    // Obtain filesize
-    uint64_t fileSize = 0;
-    fin.seekg (0, std::ios_base::end);
-    fileSize = (uint64_t) fin.tellg();
-    fin.clear();
-    fin.seekg(0, std::ios_base::beg);
-    */
-    
-    //printf("fileSize = %lu\n", fileSize);
+
     uint64_t nrows = 0; 
     uint64_t ncols = 0;
     std::vector<struct Triple<double>> featuresTriples;
@@ -165,36 +144,10 @@ int main(int argc, char **argv) {
     
     printf("INFO: Done  reading the features file %s\n", featuresFile.c_str());
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrows, ncols, featuresTriples.size());
-    //ColSort<double> f_col;
-    //if(featuresTriples.size()) {
-    //    std::sort(featuresTriples.begin(), featuresTriples.end(), f_col);
-    //}/
-    
-    
-    uint32_t NfeatureVectors = Nneurons;
-    
-    //struct CompressedSpMat<double>* featuresCSC(nrows + 1, Nneurons + 1, featuresTriples.size()) = nullptr;
-    //struct CompressedSpMat<double> *featuresCSC = nullptr;
-    //featuresCSC = new CSC<double>((nrows + 1), (Nneurons + 1), featuresTriples.size());
-    //featuresCSC->populate(featuresTriples);
-    //featuresCSC->walk();
-    //delete featuresCSC;
-    //printf("nnz = %d\n", featuresCSC->numnonzeros());
-    //struct CompressedSpMat<double> featuresCSC((nrows + 1), (Nneurons + 1), featuresTriples.size());
-    
-    //struct CSR<double> featuresCSC(nrows + 1, Nneurons + 1, featuresTriples.size()); // Pad the input
-    //featuresCSC.populate(featuresTriples);
-    //featuresCSC.walk();
-    //delete featuresCSC.
-    //printf("exiting\n");
-    
+    //uint32_t NfeatureVectors = Nneurons;
     struct CompressedSpMat<double> featuresCSC((nrows + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::dual);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
-    //featuresCSC.csc->walk();
-    //featuresCSC.csr->walk();
-    //printf("csc=%d csr=%d\n", featuresCSC.csc->nbytes, featuresCSC.csr->nbytes);
-    return(0);
     
     uint32_t maxLayers = atoi(argv[4]);
     std::vector<uint32_t> maxLayersVector = {120, 480, 1192};
@@ -203,7 +156,6 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Invalid number of layers %d\n", maxLayers);
         exit(1);
     }    
-    
     
     std::string categoryFile = ((std::string) argv[6]) + "/neuron" + std::to_string(Nneurons) + "-l" + std::to_string(maxLayers) + "-categories.tsv";
     printf("INFO: Start reading the category file %s\n", categoryFile.c_str());
@@ -229,20 +181,20 @@ int main(int argc, char **argv) {
   
   
     uint64_t DNNedges = 0;
-    //std::vector<std::vector<struct Triple<double>>> layersTriples;
-    //layersTriples.resize(maxLayers);
     std::vector<struct Triple<double>> layerTriples;
     
     struct Triple<double> layerTriple;  
     
-    //std::vector<std::vector<struct Triple<double>>> biasesTriples;
-    //biasesTriples.resize(maxLayers);
     std::vector<struct Triple<double>> biasTriples;
     
     struct Triple<double> biasTriple;  
     
     std::vector<struct CSC<double>*> layersCSC;
     std::vector<struct CSC<double>*> biasesCSC;
+    
+    //struct CompressedSpMat<double> featuresCSC
+    return(0);
+    
   
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
