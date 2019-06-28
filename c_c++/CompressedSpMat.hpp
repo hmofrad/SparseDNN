@@ -12,14 +12,15 @@
 #include "Allocator.hpp"
 #include "triple.hpp"
 
+/*
 template<typename Weight>
 struct CompressedSpMat {
     public:
         CompressedSpMat() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; }
-        ~CompressedSpMat();
+        virtual ~CompressedSpMat() { }
         virtual void populate(std::vector<struct Triple<Weight>> &triples) {}
         virtual void walk() {}
-        uint64_t numnonzeros() const { return(nnz); }
+        uint64_t numnonzeros() const { printf("parent\n"); return(nnz); }
         uint64_t numofrows()   const { return(nrows); }
         uint64_t numofcols()   const { return(ncols); }
         uint32_t nrows;
@@ -33,24 +34,15 @@ struct CompressedSpMat {
         struct Data_Block<Weight>   *A_blk;
 };
 
-template<typename Weight>
-CompressedSpMat<Weight>::~CompressedSpMat(){
-    delete IA_blk;
-    IA = nullptr;
-    delete JA_blk;
-    JA = nullptr;
-    delete  A_blk;
-    A  = nullptr;
-    printf("parent destruct\n");
-}
+
+
 
 template<typename Weight>
-struct CSC1 : public CompressedSpMat<Weight> {
+struct CSR : public CompressedSpMat<Weight> {{
     public:
-        //CSC() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; }
-        CSC1(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
-        //CSC1();
-        //~CSC();
+        CSR() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; }
+        CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
+        virtual ~CSR();
         virtual void populate(std::vector<struct Triple<Weight>> &triples);
         virtual void walk();
         uint64_t numnonzeros() const { return(nnz); };
@@ -69,71 +61,68 @@ struct CSC1 : public CompressedSpMat<Weight> {
 };
 
 template<typename Weight>
-CSC1<Weight>::CSC1(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
-    /*
+CSR<Weight>::CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
     nrows = nrows_;
     ncols = ncols_;
     nnz   = nnz_;
     IA = nullptr;
     JA = nullptr;
     A  = nullptr;
-    */
-    printf("child %d\n", nnz);
-    IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t));
-    JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t));
+    IA_blk = new Data_Block<uint32_t>(&IA, (nrows + 1), (nrows + 1) * sizeof(uint32_t));
+    JA_blk = new Data_Block<uint32_t>(&JA, nnz, nnz * sizeof(uint32_t));
     A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight));
 }
 
-
 template<typename Weight>
-CSC1<Weight>::~CSC1(){
+CSR<Weight>::~CSR(){
     delete IA_blk;
     IA = nullptr;
     delete JA_blk;
     JA = nullptr;
     delete  A_blk;
     A  = nullptr;
-    printf("chaild destruct\n");
 }
 
-
 template<typename Weight>
-void CSC1<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
-    if(ncols and nnz) {
-        ColSort<Weight> f_col;
-        std::sort(triples.begin(), triples.end(), f_col);
+void CSR<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
+    if(nrows and nnz) {
+        RowSort<Weight> f_row;
+        std::sort(triples.begin(), triples.end(), f_row);
         
-        uint32_t i = 0;
-        uint32_t j = 1;
-        JA[0] = 0;
+        
+        uint32_t i = 1;
+        uint32_t j = 0;
+        IA[0] = 0;
         for(auto& triple : triples) {
-            while((j - 1) != triple.col) {
-                j++;
-                JA[j] = JA[j - 1];
+            while((i - 1) != triple.row) {
+                i++;
+                IA[i] = IA[i - 1];
             }                  
-            JA[j]++;
-            IA[i] = triple.row;
-            A[i] = triple.weight;
-            i++;
-        }
-        
-        while((j + 1) < ncols) {
+            IA[i]++;
+            JA[j] = triple.col;
+            A[j] = triple.weight;
             j++;
-            JA[j] = JA[j - 1];
+        }
+        while((i + 1) < nrows) {
+            i++;
+            IA[i] = IA[i - 1];
+        }
+    }
+    
+}
+
+template<typename Weight>
+void CSR<Weight>::walk() {
+    for(uint32_t i = 0; i < nrows; i++) {
+        printf("i=%d\n", i);
+        for(uint32_t j = IA[i]; j < IA[i + 1]; j++) {
+            printf("    i=%d, j=%d, value=%f\n", i, JA[j], A[j]);
         }
     }
 }
 
-template<typename Weight>
-void CSC1<Weight>::walk() {
-    for(uint32_t j = 0; j < ncols; j++) {
-        printf("j=%d\n", j);
-        for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
-            printf("    i=%d, j=%d, value=%f\n", IA[i], j, A[i]);
-        }
-        
-    }
-}
+*/
+
 
 
 
@@ -142,6 +131,7 @@ struct CSC {
     public:
         CSC() { nrows = 0, ncols = 0; nnz = 0; IA = nullptr; JA = nullptr; A = nullptr; }
         CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
+        //CSC1();
         ~CSC();
         void populate(std::vector<struct Triple<Weight>> &triples);
         void walk();
@@ -168,10 +158,13 @@ CSC<Weight>::CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
     IA = nullptr;
     JA = nullptr;
     A  = nullptr;
+
+    //printf("child %d\n", nnz);
     IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t));
     JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t));
     A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight));
 }
+
 
 template<typename Weight>
 CSC<Weight>::~CSC(){
@@ -181,7 +174,9 @@ CSC<Weight>::~CSC(){
     JA = nullptr;
     delete  A_blk;
     A  = nullptr;
+    printf("children destruct csc\n");
 }
+
 
 template<typename Weight>
 void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
@@ -266,6 +261,7 @@ CSR<Weight>::~CSR(){
     JA = nullptr;
     delete  A_blk;
     A  = nullptr;
+    printf("children destruct csr\n");
 }
 
 template<typename Weight>
@@ -273,7 +269,6 @@ void CSR<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
     if(nrows and nnz) {
         RowSort<Weight> f_row;
         std::sort(triples.begin(), triples.end(), f_row);
-        
         
         uint32_t i = 1;
         uint32_t j = 0;
@@ -314,30 +309,65 @@ enum Compression_Type{
 };
 
 template<typename Weight>
-struct Sparse {
+struct CompressedSpMat {
     public: 
-        Sparse() {csc = nullptr; csr = nullptr;};
-        Sparse(Compression_Type type_);
-        ~Sparse() {};
+        CompressedSpMat() {csc = nullptr; csr = nullptr;};
+        CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<struct Triple<Weight>> &triples, Compression_Type type_);
+        ~CompressedSpMat();
         enum Compression_Type type;
         struct CSC<Weight> *csc;
-        struct CSC<Weight> *csr;
+        struct CSR<Weight> *csr;
 };
 
 template<typename Weight>
-Sparse<Weight>::Sparse(Compression_Type type_) {
+CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<struct Triple<Weight>> &triples, Compression_Type type_) {
     type = type_;
-    if(type == csr_only) {
-        printf("csr_only=%d\n", type);
-    }
-    else if(type == csc_only) {
+    if(type == csc_only) {
         printf("csc_only=%d\n", type);
+        csc = new CSC<Weight>(nrows_, ncols_, nnz_);
+        csc->populate(triples);
+    }
+    else if(type == csr_only) {
+        printf("csr_only=%d\n", type);
+        csr = new CSR<Weight>(nrows_, ncols_, nnz_);
+        csr->populate(triples);
     }
     else if(type == dual) {
         printf("dual=%d\n", type);
+        csc = new CSC<Weight>(nrows_, ncols_, nnz_);
+        csc->populate(triples);
+        printf("%d %d\n", triples[0].row, triples[0].col);
+        
+        csr = new CSR<Weight>(nrows_, ncols_, nnz_);
+        printf("%d %d\n", triples[0].row, triples[0].col);
+        csr->populate(triples);
+        printf("%d %d\n", triples[0].row, triples[0].col);
+
     }
     else {
-        printf("Error=%d\n", type);
+        fprintf(stderr, "Error: Cannot find requested compression %d\n", type);
+        exit(1);
+    }
+}
+
+template<typename Weight>
+CompressedSpMat<Weight>::~CompressedSpMat() {
+    if(type == csc_only) {
+        printf("CompressedSpMat destruct csc_only=%d\n", type);
+        delete csc;
+    }
+    else if(type == csr_only) {
+        printf("CompressedSpMat destruct csr_only=%d\n", type);
+        //delete csr;
+    }
+    else if(type == dual) {
+        printf("CompressedSpMat  destruct dual=%d\n", type);
+        delete csc;
+        delete csr;
+    }
+    else {
+        fprintf(stderr, "Error: Cannot find requested compression %d\n", type);
+        exit(1);
     }
 }
 
