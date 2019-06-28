@@ -1,2 +1,2 @@
 # SparseDNN
-Sparse Deep Neural Network
+Sparse Deep Neural Network written in C/C++
