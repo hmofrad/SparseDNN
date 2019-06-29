@@ -187,7 +187,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
         uint32_t i = 0;
         uint32_t j = 1;
         JA[0] = 0;
-        for(auto& triple : triples) {
+        for(auto &triple : triples) {
             while((j - 1) != triple.col) {
                 j++;
                 JA[j] = JA[j - 1];
@@ -276,7 +276,7 @@ void CSR<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
         uint32_t i = 1;
         uint32_t j = 0;
         IA[0] = 0;
-        for(auto& triple : triples) {
+        for(auto &triple : triples) {
             while((i - 1) != triple.row) {
                 i++;
                 IA[i] = IA[i - 1];
