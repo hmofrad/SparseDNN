@@ -35,8 +35,8 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
     double YMAX = 32;
     auto &Y = Y0;
     //for(uint32_t i = 0; i < W.size(); i++) {
-    for(uint32_t i = 0; i < 1; i++) {
-        auto *W = W1[i];
+    for(uint32_t r = 0; r < 1; r++) {
+        auto *W = W1[r];
         auto *Y_CSC = Y.csc;
         auto *Y_CSR = Y.csr;
         auto *W_CSC = W->csc;
@@ -44,59 +44,136 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
         
         Y_CSR->walk();
         printf("\n");
-        W_CSR->walk();
+        W_CSC->walk();
+        //exit(0);
+        
+        
+        
+        //W_CSC->walk();
+        std::vector<uint32_t> A_rows;
+        for(uint32_t i = 0; i < Y_CSR->nrows; i++) {
+            if(Y_CSR->IA[i+1] - Y_CSR->IA[i]) {
+                A_rows.push_back(i);
+                //printf("%d\n", Y_CSR->IA[i+1] - Y_CSR->IA[i]);
+            }
+        }
+        
+        std::vector<uint32_t> B_cols;
+        for(uint32_t j = 0; j < W_CSC->ncols; j++) {
+            if(W_CSC->JA[j+1] - W_CSC->JA[j]) {
+                B_cols.push_back(j);
+            }
+            //else 
+              //  printf("%d\n", j);
+        }
+        
+        //for(auto i: B_cols) printf("%d\n", i);
+        //printf("\n");
+        printf("Y: nrows=%lu ncols=%lu nnz=%lu\n", Y_CSC->nrows, Y_CSC->ncols, Y_CSC->nnz);
+        printf("W: nrows=%lu ncols=%lu nnz=%lu\n", W_CSC->nrows, W_CSC->ncols, W_CSC->nnz);
+        //exit(0);
+        
         
         
         //Z = Y*W{i};
         
         struct Triple<double> triple;
         std::vector<struct Triple<double>> triples;
+        //std::vector<std::vector<struct Triple<double>>> triples;
+        //triples.resize(Y_CSC->nrows);
         uint64_t nrows = 0; 
         uint64_t ncols = 0;
+        /*
         for(uint32_t i = 0; i < Y_CSR->nrows; i++) {
-            //printf("i=%d\n", i);
+            printf("i=%d\n", i);
             for(uint32_t j = Y_CSR->IA[i]; j < Y_CSR->IA[i+1]; j++) {
-                //Y_CSR->JA[j];
-                ///Y_CSR->A[j];
+                printf("  j=%d\n", j);
                 for(uint32_t k = W_CSR->IA[Y_CSR->JA[j]]; k < W_CSR->IA[Y_CSR->JA[j]+1]; k++) {
-                    Y_CSR->A[j];
-                    W_CSR->JA[k];
-                    W_CSR->A[k];
-                    triple.row = i;
-                    triple.col = W_CSR->JA[k];
-                    triple.weight = 0;
-                    triples.push_back(triple);
-                    ncols++;
-                    
-                   /// if(W_CSR->JA[k] > ncols)
-                      //  ncols = W_CSR->JA[k];
-                 //   printf("i=[%d %f] [j=%d %f]\n", i, Y_CSR->A[j], Y_CSR->JA[k], Y_CSR->A[k]);
+                    printf("    k=%d\n", k);
+                    printf("        A[%d %d]=[%d] B[%d %d]=[%f] C[%d %d]\n", i, Y_CSR->JA[j], Y_CSR->A[j], Y_CSR->JA[j], W_CSR->JA[k], W_CSR->A[k], i, W_CSR->JA[k]);
                 }
-                break;
             }
         }
+        */
+
+        
+        for(uint32_t i = 0; i < Y_CSR->nrows; i++) {
+                printf("i=%d/sz=%d\n", i, Y_CSR->IA[i+1] - Y_CSR->IA[i]);
+        for(uint32_t j = 0; j < W_CSC->ncols; j++) {
+            printf("  j=%d/sz=%d\n", j, W_CSC->JA[j+1] - W_CSC->JA[j]);
+                //uint32_t i = 1, j = 2;
+                uint32_t k = Y_CSR->IA[i], l = W_CSC->JA[j];                
+                while((k < Y_CSR->IA[i+1]) and (l < W_CSC->JA[j+1])) {
+                    //printf("  %d < %d and %d < %d\n", k, Y_CSR->IA[i+1], l, W_CSC->JA[j+1]);
+                    if(Y_CSR->JA[k] == W_CSC->IA[l]) {
+                        printf("    k=%d l = %d\n", Y_CSR->JA[k], W_CSC->IA[l]);
+                        k++;
+                        l++;
+                    }
+                    else if(Y_CSR->JA[k] < W_CSC->IA[l]) {
+                        k++;
+                    }
+                    else {
+                        l++;
+                    }
+                }
+            }
+        }
+                /*
+                for(uint32_t k = Y_CSR->IA[i]; k < Y_CSR->IA[i+1]; k++) {
+                    printf("    k=%d\n", Y_CSR->JA[k]);
+                    for(uint32_t l = W_CSC->JA[j]; l < W_CSC->JA[j+1]; l++) {
+                            if(W_CSC->IA[k] == Y_CSR->JA[l])
+                                printf("      l=%d \n", W_CSC->IA[l]);
+                            
+                    }
+                }
+                */
+          //  }
+        //}
+          /*      
+            for(uint32_t i = W_CSC->JA[j]; i < W_CSC->JA[j+1]; i++) {
+                printf("  i=%d/%d\n", i, W_CSC->IA[i]);
+                for(uint32_t k = Y_CSR->IA[W_CSC->JA[i]]; k < W_CSR->IA[Y_CSR->JA[j]+1]; k++) {
+                    printf("    k=%d/",k, );
+                }
+                
+            }
+        }
+   */
+        
+        
+        
         //printf("ncols = %lu %d %d %d\n", ncols, Y_CSR->nrows, W_CSC->ncols, triples.size());
+        exit(0);
+        
+        ColSort<double> f_col;
+        auto f_comp = [] (const Triple<double> &a, const Triple<double> &b) {return (a.row == b.row and a.col == b.col);};    
+        std::sort(triples.begin(), triples.end(), f_col);
+        auto last = std::unique(triples.begin(), triples.end(), f_comp);
+        triples.erase(last, triples.end());
         struct CompressedSpMat<double> ZSpMat(Y_CSR->nrows, W_CSC->ncols, triples.size(), triples, Compression_Type::dual);
         triples.clear();
         triples.shrink_to_fit();
         printf("\n");
+        
         //ZSpMat.csr->walk();
         //exit(0);
         auto &Z = ZSpMat;
         auto *Z_CSR = Z.csr;
-        Z_CSR->walk();
-        uint64_t l = 1;
+        //Z_CSR->walk();
+        uint64_t ll = 1;
         for(uint32_t i = 0; i < Y_CSR->nrows; i++) {
-            printf("i=%d\n", i);
+            //printf("i=%d\n", i);
             for(uint32_t j = Y_CSR->IA[i]; j < Y_CSR->IA[i+1]; j++) {
-                printf("  j=%d\n", Y_CSR->JA[j]);
-                for(uint32_t k = W_CSR->IA[Y_CSR->JA[j]], l = Z_CSR->IA[i]; k < W_CSR->IA[Y_CSR->JA[j]+1], l < Z_CSR->IA[i+1]; k++, l++) {
+                //printf("  j=%d\n", Y_CSR->JA[j]);
+                for(uint32_t k = W_CSR->IA[Y_CSR->JA[j]], ll = Z_CSR->IA[i]; k < W_CSR->IA[Y_CSR->JA[j]+1], ll < Z_CSR->IA[i+1]; k++, ll++) {
                     //, l = Z_CSR->JA[Z_CSR->IA[i]]
                      //l < Z_CSR->JA[Z_CSR->IA[i+1]];
-                    printf("##############   %d %d %d %d\n", i, j, k, l);
+                    //printf("##############   %d %d %d %d\n", i, j, k, l);
                     //Z_CSR->A[l] += 
                     //uint32_t l = Z_CSR->IA[i];
-                    Z_CSR->A[l] += Y_CSR->A[j] * W_CSR->A[k];
+                    Z_CSR->A[ll] += Y_CSR->A[j] * W_CSR->A[k];
                 }
                 
                 //Y_CSR->JA[j];
@@ -120,7 +197,8 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
                // }
             }
         }
-        
+        printf("count=%lu %lu %lu\n", Z_CSR->nnz, Z_CSR->nrows, Z_CSR->ncols);
+        /*
         for(uint32_t i = 0; i < Z_CSR->nrows; i++) {
             printf("i=%d\n", i);
             for(uint32_t j = Z_CSR->IA[i]; j < Z_CSR->IA[i+1]; j++) {
@@ -128,7 +206,7 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
                 
             }
         }
-        
+        */
         /*
         for(uint32_t j = 0; j < W_CSC->ncols; j++) {
             printf("j=%d\n", j);
@@ -333,8 +411,10 @@ int main(int argc, char **argv) {
         }
         fin.close();
         DNNedges += layerTriples.size();
-        
-        struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((nrows + 1), (Nneurons + 1), layerTriples.size(), layerTriples, Compression_Type::dual);
+        //for(auto t: layerTriples) printf("%d %d %f\n", t.row, t.col, t.weight);
+        //printf("%d %d %d\n", (nrows + 1), (Nneurons + 1), ncols);
+        // struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((nrows + 1), (Nneurons + 1), layerTriples.size(), layerTriples, Compression_Type::dual);
+        struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::dual);
         layersSpMat.push_back(layerSpMat);
         layerTriples.clear();
         layerTriples.shrink_to_fit();
@@ -345,8 +425,8 @@ int main(int argc, char **argv) {
             biasTriple.weight = biasValue;
             biasTriples.push_back(biasTriple);
         }
-        
-        struct CompressedSpMat<double> *biasSpMat = new struct CompressedSpMat<double>((nrows + 1), (Nneurons + 1), biasTriples.size(), biasTriples, Compression_Type::dual);
+        //struct CompressedSpMat<double> *biasSpMat = new struct CompressedSpMat<double>((nrows + 1), (Nneurons + 1), biasTriples.size(), biasTriples, Compression_Type::dual);
+        struct CompressedSpMat<double> *biasSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), biasTriples.size(), biasTriples, Compression_Type::dual);
         biasesSpMat.push_back(biasSpMat);
         
         biasTriples.clear();
