@@ -21,8 +21,8 @@ struct CompressedSpMat {
         virtual void populate(std::vector<struct Triple<Weight>> &triples) {}
         virtual void walk() {}
         uint64_t numnonzeros() const { printf("parent\n"); return(nnz); }
-        uint64_t numofrows()   const { return(nrows); }
-        uint64_t numofcols()   const { return(ncols); }
+        uint64_t numrows()   const { return(nrows); }
+        uint64_t numcols()   const { return(ncols); }
         uint32_t nrows;
         uint32_t ncols;
         uint64_t nnz;
@@ -46,8 +46,8 @@ struct CSR : public CompressedSpMat<Weight> {{
         virtual void populate(std::vector<struct Triple<Weight>> &triples);
         virtual void walk();
         uint64_t numnonzeros() const { return(nnz); };
-        uint64_t numofrows()   const { return(nrows); };
-        uint64_t numofcols()   const { return(ncols); };
+        uint64_t numrows()   const { return(nrows); };
+        uint64_t numcols()   const { return(ncols); };
         uint32_t nrows;
         uint32_t ncols;
         uint64_t nnz;
@@ -137,8 +137,8 @@ struct CSC {
         void updaterownelems(std::vector<uint32_t> *rowncols_);
         void walk();
         uint64_t numnonzeros() const { return(nnz); };
-        uint64_t numofrows()   const { return(nrows); };
-        uint64_t numofcols()   const { return(ncols); };
+        uint64_t numrows()   const { return(nrows); };
+        uint64_t numcols()   const { return(ncols); };
         uint64_t size()        const { return(nbytes); };
         uint32_t nrows;
         uint32_t ncols;
@@ -185,7 +185,7 @@ CSC<Weight>::~CSC(){
 template<typename Weight>
 void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
     if(ncols and nnz) {
-        colnrows.resize(ncols);
+        //colnrows.resize(ncols);
         
         ColSort<Weight> f_col;
         std::sort(triples.begin(), triples.end(), f_col);
@@ -195,7 +195,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
         JA[0] = 0;
         for(auto &triple : triples) {
             while((j - 1) != triple.col) {
-                colnrows[j-1] = JA[j] - JA[j-1];
+               // colnrows[j-1] = JA[j] - JA[j-1];
                 j++;
                 JA[j] = JA[j - 1];
             }                  
@@ -204,11 +204,11 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
             A[i] = triple.weight;
             i++;
         }
-        if((j + 1) > ncols) {
-            colnrows[j-1] = JA[j] - JA[j-1];
-        }
+        //if((j + 1) > ncols) {
+          //  colnrows[j-1] = JA[j] - JA[j-1];
+        //}
         while((j + 1) < ncols) {
-            colnrows[j-1] = JA[j] - JA[j-1];
+          //  colnrows[j-1] = JA[j] - JA[j-1];
             j++;
             JA[j] = JA[j - 1];
         }
@@ -248,7 +248,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
         //else
             //printf("Nistesh\n");
         //exit(0);
-        colnrows.resize(ncols);
+        //colnrows.resize(ncols);
         
         ColSort<Weight> f_col;
         std::sort(triples.begin(), triples.end(), f_col);
@@ -258,9 +258,10 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
         JA[0] = 0;
         for(auto &triple : triples) {
             while((j - 1) != triple.col) {
-                colnrows[j-1] = JA[j] - JA[j-1];
+                //colnrows[j-1] = JA[j] - JA[j-1];
                 
-                if(colnrows[j-1]) {
+                if(JA[j] - JA[j-1]) {
+                //if(colnrows[j-1]) {
                     updaterownelems(rowncols_);
                     /*
                     for(uint32_t i = 0; i < rowncols.size(); i++) {
@@ -279,9 +280,10 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
             i++;
         }
         if((j + 1) > ncols) {
-            colnrows[j-1] = JA[j] - JA[j-1];
+            //colnrows[j-1] = JA[j] - JA[j-1];
             
-            if(colnrows[j-1]) {
+            if(JA[j] - JA[j-1]) {
+            //if(colnrows[j-1]) {
                 updaterownelems(rowncols_);
                 /*
                 for(uint32_t i = 0; i < rowncols.size(); i++) {
@@ -292,16 +294,17 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
             }
         }
         while((j + 1) < ncols) {
-            colnrows[j-1] = JA[j] - JA[j-1];
+            //colnrows[j-1] = JA[j] - JA[j-1];
             j++;
             JA[j] = JA[j - 1];
         }
-/*        
+        
+        /*
             for(auto &i: rownelems)
                 printf("%d ", i);
             printf("\n");
-            exit(0);
-  */      
+        //    exit(0);
+        */
     }
 }
 
@@ -337,16 +340,22 @@ struct CSR {
         CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
         ~CSR();
         void populate(std::vector<struct Triple<Weight>> &triples);
+        void populate(struct Triple<Weight> &triple);
+        void postpopulate();
         void walk();
         uint64_t numnonzeros() const { return(nnz); };
-        uint64_t numofrows()   const { return(nrows); };
-        uint64_t numofcols()   const { return(ncols); };
+        uint32_t numrows()   const { return(nrows); };
+        uint32_t numcols()   const { return(ncols); };
         uint64_t size()        const { return(nbytes); };
         uint32_t nrows;
         uint32_t ncols;
         uint64_t nnz;
         uint64_t nbytes;
         std::vector<uint32_t> rowncols;
+        std::vector<uint32_t> *rownelems;
+        uint64_t idx;
+        //uint64_t idx_row;
+        //uint64_t idx_col;
         uint32_t *IA; // Rows
         uint32_t *JA; // Cols
         Weight   *A;  // Vals
@@ -367,6 +376,7 @@ CSR<Weight>::CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
     JA_blk = new Data_Block<uint32_t>(&JA, nnz, nnz * sizeof(uint32_t));
     A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight));
     nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
+    idx = 0;
 }
 
 template<typename Weight>
@@ -398,7 +408,7 @@ void CSR<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
             }                  
             IA[i]++;
             JA[j] = triple.col;
-            A[j] = triple.weight;
+            A[j]  = triple.weight;
             j++;
         }
         if((i + 1) > nrows) {
@@ -410,8 +420,34 @@ void CSR<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
             IA[i] = IA[i - 1];
         }
     }
+}
+
+template<typename Weight>
+void CSR<Weight>::populate(struct Triple<Weight> &triple) {
+    
+    IA[triple.row+1]++;
+    //printf("<%d %d %f %lu %d>\n", triple.row, triple.col, triple.weight, idx, IA[triple.row+1]);
+    JA[idx] = triple.col;
+    A[idx] = triple.weight;
+    idx++;
+    
     
 }
+
+template<typename Weight>
+void CSR<Weight>::postpopulate() {
+    uint32_t i = 1;
+    IA[0] = 0;
+    while(i < nrows + 1) {
+        //if(IA[i] == 0)
+          //  IA[i] = IA[i-1];
+        //else
+            IA[i] += IA[i-1];
+        i++;
+    }
+    
+}
+    
 
 template<typename Weight>
 void CSR<Weight>::walk() {
@@ -457,8 +493,16 @@ CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint6
         nbytes = csc->nbytes;
     }
     else if(type == csr_only) {
-        csr = new CSR<Weight>(nrows_, ncols_, nnz_);
-        csr->populate(triples);
+        if(rowncols_) {
+            uint64_t maxnnz = std::accumulate(rowncols_->begin(), rowncols_->end(), 0);
+            //printf("%lu %lu %d\n", nnz_,  rowncols_->size(), std::accumulate(rowncols_->begin(), rowncols_->end(), 0));
+            //exit(0);
+            csr = new CSR<Weight>(nrows_, ncols_, maxnnz);
+        }
+        else {
+            csr = new CSR<Weight>(nrows_, ncols_, nnz_);
+            csr->populate(triples);
+        }
         nbytes = csr->nbytes;
     }
     else if(type == dual) {
