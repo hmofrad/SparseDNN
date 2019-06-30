@@ -37,10 +37,10 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
     //for(uint32_t i = 0; i < W.size(); i++) {
     for(uint32_t r = 0; r < 1; r++) {
         auto *W = W1[r];
-        auto *Y_CSC = Y.csc;
+        //auto *Y_CSC = Y.csc;
         auto *Y_CSR = Y.csr;
         auto *W_CSC = W->csc;
-        auto *W_CSR = W->csr;
+        //auto *W_CSR = W->csr;
         
         
         /*
@@ -97,22 +97,26 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
             }
         }
         */
-        
+        /*
         for(int i = 0; i < Y_CSR->rowncols.size(); i++) {
             for(int j = 0; j < W_CSC->colnrows.size(); j++) {
                 if(Y_CSR->rowncols[i] and W_CSC->colnrows[j])
                     printf("%d %d\n", i, j);
             }
         }
+         */
+         
+        struct CompressedSpMat<double> ZSpMat(Y_CSR->nrows, W_CSC->ncols, triples.size(), triples, Compression_Type::csr_only, &W_CSC->rownelems);
+        auto &Z = ZSpMat.csr;
+        
          
          
-         exit(0);
 
         
         for(uint32_t i = 0; i < Y_CSR->nrows; i++) {
-                printf("i=%d/sz=%d\n", i, Y_CSR->IA[i+1] - Y_CSR->IA[i]);
+                //printf("i=%d/sz=%d\n", i, Y_CSR->IA[i+1] - Y_CSR->IA[i]);
         for(uint32_t j = 0; j < W_CSC->ncols; j++) {
-            printf("  j=%d/sz=%d\n", j, W_CSC->JA[j+1] - W_CSC->JA[j]);
+            //printf("  j=%d/sz=%d\n", j, W_CSC->JA[j+1] - W_CSC->JA[j]);
                 //uint32_t i = 1, j = 2;
                 uint32_t k = Y_CSR->IA[i], l = W_CSC->JA[j];                
                 double t = 0.0;
@@ -132,18 +136,24 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
                     }
                 }
                 //printf("    %d %d %d\n", i,j, t);
-                std::cout << "    " << i << " " << j << " " <<  t << std::endl;
+                //std::cout << "    " << i << " " << j << " " <<  t << std::endl;
                 if(t > 0) {
                     triple.row = i;
-                    triple.col = i;
+                    triple.col = j;
                     triple.weight = t;
                     triples.push_back(triple);
-                    printf("<%d %d %f>\n", triple.row, triple.col, triple.weight);
+                    //printf("<%d %d %f>\n", triple.row, triple.col, triple.weight);
+                    ZSpMat.csr->populate(triple);
                 }
                 
             }
         }
+        ZSpMat.csr->postpopulate();
+        //ZSpMat.csr->walk();
+        printf("%d %d %lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros()); 
         
+        //exit(0);
+        /*
         for(auto &tt: triples) {
         //    for(auto tt: t) {
                 printf("%d %d %f\n", tt.row, tt.col, tt.weight);
@@ -158,7 +168,7 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
         ZSpMat.csc->walk();
         printf("\n");
         ZSpMat.csr->walk();
-        
+        */
                 /*
                 for(uint32_t k = Y_CSR->IA[i]; k < Y_CSR->IA[i+1]; k++) {
                     printf("    k=%d\n", Y_CSR->JA[k]);
@@ -185,7 +195,7 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
         
         
         //printf("ncols = %lu %d %d %d\n", ncols, Y_CSR->nrows, W_CSC->ncols, triples.size());
-        exit(0);
+        //exit(0);
         /*
         ColSort<double> f_col;
         auto f_comp = [] (const Triple<double> &a, const Triple<double> &b) {return (a.row == b.row and a.col == b.col);};    
