@@ -446,8 +446,11 @@ void CSR<Weight>::postpopulate() {
             IA[i] += IA[i-1];
         i++;
     }
-    JA_blk->reallocate(idx * sizeof(uint32_t));
-    //A_blk->reallocate(idx);
+    nnz = idx;
+    JA_blk->reallocate(nnz, (nnz * sizeof(uint32_t)));
+    A_blk->reallocate(nnz, (nnz * sizeof(Weight)));
+    nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
+    //
     
 }
     
