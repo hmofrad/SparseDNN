@@ -148,10 +148,12 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
                 
             }
         }
+        printf("nrows=%d ncols=%d nnz=%lu idx=%lu nb=%lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros(), ZSpMat.csr->idx, ZSpMat.csr->nbytes); 
         ZSpMat.csr->postpopulate();
         //ZSpMat.csr->walk();
-        printf("%d %d %lu %lu %lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros(), ZSpMat.csr->idx, ZSpMat.csr->nbytes); 
+        printf("nrows=%d ncols=%d nnz=%lu idx=%lu nb=%lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros(), ZSpMat.csr->idx, ZSpMat.csr->nbytes); 
         
+        //printf("exiting\n");
         //exit(0);
         /*
         for(auto &tt: triples) {
@@ -444,7 +446,7 @@ int main(int argc, char **argv) {
 
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
-    for(uint32_t i = 0; i < maxLayers; i++) {  
+    for(uint32_t i = 0; i < 1; i++) {  
         std::string layerFile = ((std::string) argv[6]) + "/neuron" + std::to_string(Nneurons) + "/n" + std::to_string(Nneurons) + "-l" + std::to_string(i+1) + ".tsv";
         
         fin.clear();
@@ -496,7 +498,7 @@ int main(int argc, char **argv) {
     printf("DNN neurons/layer: %d, layers:%d, edges:%lu\n", Nneurons, maxLayers, DNNedges);
     printf("Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
     inferenceReLUvec<double>(layersSpMat, biasesSpMat, featuresSpMat);
-    for(uint32_t i = 0; i < maxLayers; i++) {  
+    for(uint32_t i = 0; i < 1; i++) {  
         delete layersSpMat[i];
         delete biasesSpMat[i];
     }
