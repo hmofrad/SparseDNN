@@ -150,7 +150,7 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
         }
         ZSpMat.csr->postpopulate();
         //ZSpMat.csr->walk();
-        printf("%d %d %lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros()); 
+        printf("%d %d %lu %lu %lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros(), ZSpMat.csr->idx, ZSpMat.csr->nbytes); 
         
         //exit(0);
         /*
