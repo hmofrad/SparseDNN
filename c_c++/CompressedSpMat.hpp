@@ -134,7 +134,7 @@ struct CSC {
         ~CSC();
         void populate(std::vector<struct Triple<Weight>> &triples);
         void populate(std::vector<struct Triple<Weight>> &triples, std::vector<uint32_t> *rowncols_);
-        void updaterownelem(std::vector<uint32_t> *rowncols_);
+        void updaterownelems(std::vector<uint32_t> *rowncols_);
         void walk();
         uint64_t numnonzeros() const { return(nnz); };
         uint64_t numofrows()   const { return(nrows); };
@@ -145,7 +145,7 @@ struct CSC {
         uint64_t nnz;
         uint64_t nbytes;
         std::vector<uint32_t>  colnrows;
-        std::vector<uint32_t> rownelem;
+        std::vector<uint32_t> rownelems;
         //std::vector<uint32_t> *rowncols;
         uint32_t *IA; // Rows
         uint32_t *JA; // Cols
@@ -220,7 +220,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
     if(ncols and nnz) {
         
         std::vector<uint32_t> &rowncols = *rowncols_;
-        rownelem.resize(rowncols.size());
+        rownelems.resize(rowncols.size());
         //if(rowncols) {
             //printf("hastesh\n");
             //for(int i = 0; i < rowncols.size(); i++) {
@@ -261,11 +261,11 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
                 colnrows[j-1] = JA[j] - JA[j-1];
                 
                 if(colnrows[j-1]) {
-                    updaterownelem(rowncols_);
+                    updaterownelems(rowncols_);
                     /*
                     for(uint32_t i = 0; i < rowncols.size(); i++) {
                         if(rowncols[i])
-                            rownelem[i]++;
+                            rownelems[i]++;
                     }
                     */
                 }
@@ -282,11 +282,11 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
             colnrows[j-1] = JA[j] - JA[j-1];
             
             if(colnrows[j-1]) {
-                updaterownelem(rowncols_);
+                updaterownelems(rowncols_);
                 /*
                 for(uint32_t i = 0; i < rowncols.size(); i++) {
                     if(rowncols[i])
-                        rownelem[i]++;
+                        rownelems[i]++;
                 }
                 */
             }
@@ -297,7 +297,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
             JA[j] = JA[j - 1];
         }
 /*        
-            for(auto &i: rownelem)
+            for(auto &i: rownelems)
                 printf("%d ", i);
             printf("\n");
             exit(0);
@@ -306,11 +306,11 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
 }
 
 template<typename Weight>
-void CSC<Weight>::updaterownelem(std::vector<uint32_t> *rowncols_) {
+void CSC<Weight>::updaterownelems(std::vector<uint32_t> *rowncols_) {
     std::vector<uint32_t> &rowncols = *rowncols_;
     for(uint32_t i = 0; i < rowncols.size(); i++) {
         if(rowncols[i]) {
-            rownelem[i]++;
+            rownelems[i]++;
         }
     }
 }
