@@ -337,7 +337,8 @@ template<typename Weight>
 struct CSR {
     public:
         CSR() { nrows = 0, ncols = 0; nnz = 0; nbytes = 0; IA = nullptr; JA = nullptr; A = nullptr; }
-        CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
+        //CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
+        CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_aligned_ = false);
         ~CSR();
         void populate(std::vector<struct Triple<Weight>> &triples);
         void populate(struct Triple<Weight> &triple);
@@ -365,16 +366,16 @@ struct CSR {
 };
 
 template<typename Weight>
-CSR<Weight>::CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
+CSR<Weight>::CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_aligned_) {
     nrows = nrows_;
     ncols = ncols_;
     nnz   = nnz_;
     IA = nullptr;
     JA = nullptr;
     A  = nullptr;
-    IA_blk = new Data_Block<uint32_t>(&IA, (nrows + 1), (nrows + 1) * sizeof(uint32_t));
-    JA_blk = new Data_Block<uint32_t>(&JA, nnz, nnz * sizeof(uint32_t));
-    A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight));
+    IA_blk = new Data_Block<uint32_t>(&IA, (nrows + 1), (nrows + 1) * sizeof(uint32_t), page_aligned_);
+    JA_blk = new Data_Block<uint32_t>(&JA, nnz, nnz * sizeof(uint32_t), page_aligned_);
+    A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned_);
     nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
     idx = 0;
 }
@@ -445,6 +446,8 @@ void CSR<Weight>::postpopulate() {
             IA[i] += IA[i-1];
         i++;
     }
+    JA_blk->reallocate(idx * sizeof(uint32_t));
+    //A_blk->reallocate(idx);
     
 }
     
@@ -497,7 +500,8 @@ CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint6
             uint64_t maxnnz = std::accumulate(rowncols_->begin(), rowncols_->end(), 0);
             //printf("%lu %lu %d\n", nnz_,  rowncols_->size(), std::accumulate(rowncols_->begin(), rowncols_->end(), 0));
             //exit(0);
-            csr = new CSR<Weight>(nrows_, ncols_, maxnnz);
+            csr = new CSR<Weight>(nrows_, ncols_, maxnnz, true);
+            
         }
         else {
             csr = new CSR<Weight>(nrows_, ncols_, nnz_);
