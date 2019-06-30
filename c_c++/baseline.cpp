@@ -42,6 +42,8 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
         auto *W_CSC = W->csc;
         auto *W_CSR = W->csr;
         
+        
+        /*
         Y_CSR->walk();
         printf("\n");
         W_CSC->walk();
@@ -72,7 +74,7 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
         printf("Y: nrows=%lu ncols=%lu nnz=%lu\n", Y_CSC->nrows, Y_CSC->ncols, Y_CSC->nnz);
         printf("W: nrows=%lu ncols=%lu nnz=%lu\n", W_CSC->nrows, W_CSC->ncols, W_CSC->nnz);
         //exit(0);
-        
+        */
         
         
         //Z = Y*W{i};
@@ -95,6 +97,16 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
             }
         }
         */
+        
+        for(int i = 0; i < Y_CSR->rowncols.size(); i++) {
+            for(int j = 0; j < W_CSC->colnrows.size(); j++) {
+                if(Y_CSR->rowncols[i] and W_CSC->colnrows[j])
+                    printf("%d %d\n", i, j);
+            }
+        }
+         
+         
+         exit(0);
 
         
         for(uint32_t i = 0; i < Y_CSR->nrows; i++) {
@@ -367,12 +379,17 @@ int main(int argc, char **argv) {
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrows, ncols, featuresTriples.size());
     
     //uint32_t NfeatureVectors = Nneurons;
-    struct CompressedSpMat<uint32_t> featuresSpMat((nrows + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::dual);
+    struct CompressedSpMat<uint32_t> featuresSpMat((nrows + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::csr_only);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
     //featuresSpMat.csc->walk();
     //printf("\n");
     //featuresSpMat.csr->walk();
+    
+    //for(auto i: featuresSpMat.csc->colnrows) {
+    //    printf("%d\n", i);
+   // }
+    
     //return(0);
     
     uint32_t maxLayers = atoi(argv[4]);
@@ -444,7 +461,7 @@ int main(int argc, char **argv) {
         //for(auto t: layerTriples) printf("%d %d %f\n", t.row, t.col, t.weight);
         //printf("%d %d %d\n", (nrows + 1), (Nneurons + 1), ncols);
         // struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((nrows + 1), (Nneurons + 1), layerTriples.size(), layerTriples, Compression_Type::dual);
-        struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::dual);
+        struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::csc_only, &featuresSpMat.csr->rowncols);
         layersSpMat.push_back(layerSpMat);
         layerTriples.clear();
         layerTriples.shrink_to_fit();
@@ -456,7 +473,7 @@ int main(int argc, char **argv) {
             biasTriples.push_back(biasTriple);
         }
         //struct CompressedSpMat<double> *biasSpMat = new struct CompressedSpMat<double>((nrows + 1), (Nneurons + 1), biasTriples.size(), biasTriples, Compression_Type::dual);
-        struct CompressedSpMat<double> *biasSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), biasTriples.size(), biasTriples, Compression_Type::dual);
+        struct CompressedSpMat<double> *biasSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), biasTriples.size(), biasTriples, Compression_Type::csc_only);
         biasesSpMat.push_back(biasSpMat);
         
         biasTriples.clear();
