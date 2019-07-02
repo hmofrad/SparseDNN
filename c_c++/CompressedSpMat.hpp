@@ -9,6 +9,8 @@
 #ifndef COMPRESSEDSPMAT_HPP
 #define COMPRESSEDSPMAT_HPP
 
+#include <numeric>
+
 #include "Allocator.hpp"
 #include "Triple.hpp"
 
@@ -507,7 +509,7 @@ void CSR<Weight>::repopulate(struct CSR<Weight> *other_csr){
             //o_JA[j];
             //o_A[j];
             if(o_A[j]) {
-                IA[i]++;
+                IA[i+1]++;
                 JA[idx] = o_JA[j];
                 A[idx]  = o_A[j];
                 idx++;
