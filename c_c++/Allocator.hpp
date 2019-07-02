@@ -68,7 +68,7 @@ void Data_Block<Data_Type>::reallocate(uint64_t nitems_, uint64_t nbytes_) {
             uint64_t new_nbytes = nbytes_;
             new_nbytes += (PAGE_SIZE - (nbytes_ % PAGE_SIZE));
             uint64_t old_nbytes = nbytes;
-            printf("nitems_=%lu nbytes_=%lu old_nbytes=%lu new_nbytes=%lu\n",  nitems, nbytes, old_nbytes, new_nbytes);
+            //printf("nitems_=%lu nbytes_=%lu old_nbytes=%lu new_nbytes=%lu\n",  nitems, nbytes, old_nbytes, new_nbytes);
             if(old_nbytes != new_nbytes) {
                 //mremap(mapping, oldsize, newsize, 0)
 //                Data_Type* ptr1;
@@ -95,7 +95,7 @@ void Data_Block<Data_Type>::reallocate(uint64_t nitems_, uint64_t nbytes_) {
     //}
         nitems = nitems_;
         nbytes = new_nbytes;
-        printf("nitems=%lu nbytes=%lu old_nbytes=%lu new_nbytes=%lu\n",  nitems, nbytes, old_nbytes, new_nbytes);
+        //printf("nitems=%lu nbytes=%lu old_nbytes=%lu new_nbytes=%lu\n",  nitems, nbytes, old_nbytes, new_nbytes);
         
             
             
