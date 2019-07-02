@@ -19,7 +19,7 @@
 
 #include "triple.hpp"
 #include "CompressedSpMat.hpp"
-
+#include "DenseVec.hpp"
 
 
 
@@ -27,20 +27,25 @@
 
 //void inferenceReLUvec(std::vector<std::vector<struct Triple<double>>> &layersTriples, std::vector<std::vector<struct Triple<double>>> &biasesTriples, std::vector<struct Triple<double>> &featuresTriples) {
 template<typename Weight>    
-void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat, std::vector<struct CompressedSpMat<double>*> &biasesSpMat, struct CompressedSpMat<uint32_t> &featuresSpMat) {    
+//void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat, std::vector<struct CompressedSpMat<double>*> &biasesSpMat, struct CompressedSpMat<uint32_t> &featuresSpMat) {    
+void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat, std::vector<struct DenseVec<double>*> &biasesDenseVec, struct CompressedSpMat<uint32_t> &featuresSpMat) {    
     auto &W1 = layersSpMat;
-    auto &B = biasesSpMat;
+    auto &B1 = biasesDenseVec;
     auto &Y0 = featuresSpMat;
     //printf("%lu %lu %lu\n", W.size(), B.size(), Y0.size());
+    double YMIN = 0;
     double YMAX = 32;
     auto &Y = Y0;
     //for(uint32_t i = 0; i < W.size(); i++) {
+                struct Triple<double> triple;
+        std::vector<struct Triple<double>> triples;
     for(uint32_t r = 0; r < 1; r++) {
         auto *W = W1[r];
         //auto *Y_CSC = Y.csc;
         auto *Y_CSR = Y.csr;
         auto *W_CSC = W->csc;
         //auto *W_CSR = W->csr;
+        auto *B = B1[r];
         
         
         /*
@@ -79,8 +84,7 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
         
         //Z = Y*W{i};
         
-        struct Triple<double> triple;
-        std::vector<struct Triple<double>> triples;
+
         //std::vector<std::vector<struct Triple<double>>> triples;
         //triples.resize(Y_CSC->nrows);
         uint64_t nrows = 0; 
@@ -107,7 +111,7 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
          */
          
         struct CompressedSpMat<double> ZSpMat(Y_CSR->nrows, W_CSC->ncols, triples.size(), triples, Compression_Type::csr_only, &W_CSC->rownelems);
-        auto &Z = ZSpMat.csr;
+        auto *Z_CSR = ZSpMat.csr;
         
          
          
@@ -141,17 +145,58 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
                     triple.row = i;
                     triple.col = j;
                     triple.weight = t;
-                    triples.push_back(triple);
-                    //printf("<%d %d %f>\n", triple.row, triple.col, triple.weight);
-                    ZSpMat.csr->populate(triple);
+                    //triples.push_back(triple);
+                    Z_CSR->populate(triple);
                 }
-                
+            }
+            //Z_CSR->populate_spa(triples);
+            //triples.clear();
+            //triples.shrink_to_fit();
+        }
+        //triples.clear();
+        //triples.shrink_to_fit();
+        //printf("nrows=%d ncols=%d nnz=%lu idx=%lu nb=%lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros(), ZSpMat.csr->idx, ZSpMat.csr->nbytes); 
+        Z_CSR->postpopulate();
+        //Z_CSR->walk();
+        //printf("nrows=%d ncols=%d nnz=%lu idx=%lu nb=%lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros(), ZSpMat.csr->idx, ZSpMat.csr->nbytes); 
+        
+        //auto *Z_CSR = Z->csr;
+        
+        
+        for(uint32_t i = 0; i < Z_CSR->nrows; i++) {
+            for(uint32_t j = Z_CSR->IA[i]; j < Z_CSR->IA[i+1]; j++) {
+                //Z_CSR->A[j] = Z_CSR->A[j] + B->A[Z_CSR->JA[j]];
+                Z_CSR->A[j] += B->A[Z_CSR->JA[j]];
+                //if(B->A[Z_CSR->JA[j]] != -.3) {
+                ///Z_CSR->A[j] += -.3;
+                    //printf("%d %d %d %f\n", i, j, Z_CSR->JA[j], B->A[Z_CSR->JA[j]]);
+                    //exit(0);
+                //}
             }
         }
-        printf("nrows=%d ncols=%d nnz=%lu idx=%lu nb=%lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros(), ZSpMat.csr->idx, ZSpMat.csr->nbytes); 
-        ZSpMat.csr->postpopulate();
-        //ZSpMat.csr->walk();
-        printf("nrows=%d ncols=%d nnz=%lu idx=%lu nb=%lu\n", ZSpMat.csr->numrows(), ZSpMat.csr->numcols(), ZSpMat.csr->numnonzeros(), ZSpMat.csr->idx, ZSpMat.csr->nbytes); 
+        uint32_t ii = 0;
+        uint32_t jj = 0;
+        for(uint32_t i = 0; i < Z_CSR->nrows; i++) {
+            for(uint32_t j = Z_CSR->IA[i]; j < Z_CSR->IA[i+1]; j++) {
+                if(Z_CSR->A[j] < YMIN) {
+                    Z_CSR->A[j] = YMIN;
+                    //ii++;
+                }
+                if(Z_CSR->A[j] > YMAX) {
+                    Z_CSR->A[j] = YMAX;
+                    //jj++;
+                }
+              //  if(i == 60000)
+            //printf("%d %d %f\n", i, Z_CSR->JA[j], Z_CSR->A[j]);
+            }
+        }
+        //printf("%d %d %d %f\n", ZSpMat.csr->numnonzeros() - ii, ii, jj, B->A[1]);
+        //
+        
+        
+        
+        
+        //B->walk();
         
         //printf("exiting\n");
         //exit(0);
@@ -351,7 +396,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "USAGE: %s -n <Nneurons> -l <maxLayers> <path_to_input> <path_to_dnn>\n", argv[0]);
         exit(1);         
     }
-    std::vector<double> neuralNetBias = {-0.3,-0.35,-0.4,-0.45};
+    std::vector<double> neuralNetBias = {0, -0.3,-0.35,-0.4,-0.45};
     uint32_t Nneurons = atoi(argv[2]);
     std::vector<uint32_t> NneuronsVector = {3, 1024, 4096, 16384, 65536};
     std::ptrdiff_t idxN = std::distance(NneuronsVector.begin(), std::find(NneuronsVector.begin(), NneuronsVector.end(), Nneurons));
@@ -440,13 +485,15 @@ int main(int argc, char **argv) {
     struct Triple<double> layerTriple;  
     std::vector<struct CompressedSpMat<double>*> layersSpMat;
     
-    std::vector<struct Triple<double>> biasTriples;
-    struct Triple<double> biasTriple;  
-    std::vector<struct CompressedSpMat<double>*> biasesSpMat;
+    //std::vector<struct Triple<double>> biasTriples;
+    //struct Triple<double> biasTriple;  
+    //std::vector<struct CompressedSpMat<double>*> biasesSpMat;
+    std::vector<struct DenseVec<double>*> biasesDenseVec;
 
     printf("INFO: Start reading %d layer files\n", maxLayers);
+    maxLayers = 1;
     auto start = std::chrono::high_resolution_clock::now();
-    for(uint32_t i = 0; i < 1; i++) {  
+    for(uint32_t i = 0; i < maxLayers; i++) {  
         std::string layerFile = ((std::string) argv[6]) + "/neuron" + std::to_string(Nneurons) + "/n" + std::to_string(Nneurons) + "-l" + std::to_string(i+1) + ".tsv";
         
         fin.clear();
@@ -477,7 +524,19 @@ int main(int argc, char **argv) {
         layersSpMat.push_back(layerSpMat);
         layerTriples.clear();
         layerTriples.shrink_to_fit();
-
+        
+        struct DenseVec<double> *biaseDenseVec = new struct DenseVec<double>((Nneurons + 1));
+        auto &bias_A = biaseDenseVec->A;
+        for(uint32_t j = 1; j < Nneurons+1; j++) {
+            bias_A[j] = biasValue;
+        }
+        //for(uint32_t j = 0; j < Nneurons; j++) {
+        //    printf("%d %f\n", i, bias_A[i]);
+        //}
+        
+        biasesDenseVec.push_back(biaseDenseVec);
+        //exit(0);
+        /*
         for(uint32_t j = 0; j < Nneurons; j++) {
             biasTriple.row = 1;
             biasTriple.col = j+1;
@@ -490,6 +549,7 @@ int main(int argc, char **argv) {
         
         biasTriples.clear();
         biasTriples.shrink_to_fit();
+        */
     }    
     auto finish = std::chrono::high_resolution_clock::now();
     printf("INFO: Done  reading %d layer files\n", maxLayers);
@@ -497,10 +557,17 @@ int main(int argc, char **argv) {
     double readLayerRate = (double) DNNedges/readLayerTime;
     printf("DNN neurons/layer: %d, layers:%d, edges:%lu\n", Nneurons, maxLayers, DNNedges);
     printf("Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
-    inferenceReLUvec<double>(layersSpMat, biasesSpMat, featuresSpMat);
-    for(uint32_t i = 0; i < 1; i++) {  
+    start = std::chrono::high_resolution_clock::now();
+    inferenceReLUvec<double>(layersSpMat, biasesDenseVec, featuresSpMat);
+    finish = std::chrono::high_resolution_clock::now();
+    
+    double challengeRunTime = (double)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
+    double challengeRunRate = Nneurons * (DNNedges/challengeRunTime);
+    printf("Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
+    
+    for(uint32_t i = 0; i < maxLayers; i++) {  
         delete layersSpMat[i];
-        delete biasesSpMat[i];
+        //delete biasesSpMat[i];
     }
     return(0);
 }
