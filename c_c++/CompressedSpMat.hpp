@@ -344,6 +344,8 @@ struct CSR {
         void populate(struct Triple<Weight> &triple);
         void populate_spa(std::vector<struct Triple<Weight>> &triples);
         void postpopulate();
+        void clear();
+        void repopulate(struct CSR<Weight> *other_csr);
         void walk();
         uint64_t numnonzeros() const { return(nnz); };
         uint32_t numrows()   const { return(nrows); };
@@ -456,13 +458,57 @@ void CSR<Weight>::postpopulate() {
         i++;
     }
     nnz = idx;
-    JA_blk->reallocate(nnz, (nnz * sizeof(uint32_t)));
-    A_blk->reallocate(nnz, (nnz * sizeof(Weight)));
+    JA_blk->reallocate(&JA, nnz, (nnz * sizeof(uint32_t)));
+    A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
     nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
-    //
+}
+
+template<typename Weight>
+void CSR<Weight>::clear() {
+    IA_blk->clear();
+    JA_blk->clear();
+    A_blk->clear();
+}    
+
+template<typename Weight>
+void CSR<Weight>::repopulate(struct CSR<Weight> *other_csr){
+    printf("<%d %d>\n", nnz, other_csr->numnonzeros());
+    //auto *O_IA = 
+    
+    uint32_t o_nrows = other_csr->numrows();
+    uint32_t o_nnz = other_csr->numnonzeros();
+    uint32_t *o_IA = other_csr->IA;
+    uint32_t *o_JA = other_csr->JA;
+    Weight   *o_A  = other_csr->A;
+    if(nrows != o_nrows) {
+        fprintf(stderr, "Error: Cannot repopulate CSR\n");
+        exit(1);
+    }
+    
+    
+    if(o_nnz > nnz) {
+        printf("Realloc %d %d\n", sizeof(uint32_t), sizeof(Weight));
+        JA_blk->reallocate(&JA, o_nnz, (o_nnz * sizeof(uint32_t)));
+        printf("is done\n");
+        JA_blk->clear();
+        A_blk->reallocate(&A, o_nnz, (o_nnz * sizeof(Weight)));
+        A_blk->clear();
+    }
+    
+    idx = 0;
+    
+    for(uint32_t i = 0; i < o_nrows; i++) {
+        for(uint32_t j = o_IA[i]; j < o_IA[i + 1]; j++) {
+            o_JA[j];
+            o_A[j];
+        }
+    }
+    exit(0);
+    
+        
     
 }
-    
+
 
 template<typename Weight>
 void CSR<Weight>::walk() {
@@ -518,7 +564,7 @@ CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint6
             
         }
         else {
-            csr = new CSR<Weight>(nrows_, ncols_, nnz_);
+            csr = new CSR<Weight>(nrows_, ncols_, nnz_, true);
             csr->populate(triples);
         }
         nbytes = csr->nbytes;
