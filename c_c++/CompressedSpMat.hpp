@@ -250,6 +250,8 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
         //exit(0);
         //colnrows.resize(ncols);
         
+        
+        
         ColSort<Weight> f_col;
         std::sort(triples.begin(), triples.end(), f_col);
         
@@ -385,12 +387,14 @@ CSR<Weight>::CSR(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_alig
 
 template<typename Weight>
 CSR<Weight>::~CSR(){
+    //printf("Deleting CSR\n");
     delete IA_blk;
     IA = nullptr;
     delete JA_blk;
     JA = nullptr;
     delete  A_blk;
     A  = nullptr;
+    //printf("Is done\n");
 }
 
 template<typename Weight>
@@ -472,7 +476,7 @@ void CSR<Weight>::clear() {
 
 template<typename Weight>
 void CSR<Weight>::repopulate(struct CSR<Weight> *other_csr){
-    printf("<%d %d>\n", nnz, other_csr->numnonzeros());
+    //printf("<%d %d>\n", nnz, other_csr->numnonzeros());
     //auto *O_IA = 
     
     uint32_t o_nrows = other_csr->numrows();
@@ -486,24 +490,33 @@ void CSR<Weight>::repopulate(struct CSR<Weight> *other_csr){
     }
     
     
-    if(o_nnz > nnz) {
-        printf("Realloc %d %d\n", sizeof(uint32_t), sizeof(Weight));
+    if(nnz < o_nnz) {
+        //printf("Realloc %d %d\n", sizeof(uint32_t), sizeof(Weight));
         JA_blk->reallocate(&JA, o_nnz, (o_nnz * sizeof(uint32_t)));
-        printf("is done\n");
-        JA_blk->clear();
+        //printf("is done\n");
         A_blk->reallocate(&A, o_nnz, (o_nnz * sizeof(Weight)));
-        A_blk->clear();
     }
+    clear();
+    //IA_blk->clear();
+    //JA_blk->clear();
+    //A_blk->clear();
     
     idx = 0;
-    
     for(uint32_t i = 0; i < o_nrows; i++) {
         for(uint32_t j = o_IA[i]; j < o_IA[i + 1]; j++) {
-            o_JA[j];
-            o_A[j];
+            //o_JA[j];
+            //o_A[j];
+            if(o_A[j]) {
+                IA[i]++;
+                JA[idx] = o_JA[j];
+                A[idx]  = o_A[j];
+                idx++;
+            }
         }
     }
-    exit(0);
+    postpopulate();
+    //walk();
+    //exit(0);
     
         
     
@@ -520,7 +533,7 @@ void CSR<Weight>::walk() {
             //printf("    i=%d, j=%d, value=%f\n", i, JA[j], A[j]);
             //std::cout << "i=" << i << ",j=" << JA[j] <<  ",value=" << A[j] << std::endl;
             //if(A[j] == 0)
-                std::cout << "i=" << i << ",j=" << JA[j] <<  ",value=" << A[j] << std::endl;
+               //    std::cout << "i=" << i << ",j=" << JA[j] <<  ",value=" << A[j] << std::endl;
         }
     }
 }
