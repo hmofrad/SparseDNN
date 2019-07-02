@@ -583,7 +583,44 @@ int main(int argc, char **argv) {
     start = std::chrono::high_resolution_clock::now();
     inferenceReLUvec<double>(layersSpMat, biasesDenseVec, featuresSpMat);
     finish = std::chrono::high_resolution_clock::now();
+   
+    std::vector<int32_t> predictedCategories;
+    auto &Y = featuresSpMat;
+    auto *Y_CSR = Y.csr;
+    for(uint32_t i = 0; i < Y_CSR->nrows; i++) {
+        double s = 0;
+        for(uint32_t j = Y_CSR->IA[i]; j < Y_CSR->IA[i+1]; j++) {
+            s += Y_CSR->A[j];
+        }
+        if( s > 0) {
+            predictedCategories.push_back(i);
+        }
+    }
     
+    bool tf = true;
+    if(Ncategories == predictedCategories.size()) {
+        for(int32_t i = 0; i < Ncategories; i++) {
+            if(predictedCategories[i] != trueCategories[i]) {
+                tf = false;
+                break;
+            }
+        }
+    } 
+    else {
+        tf = false;
+    }
+    
+    if(tf) {
+        printf("Challenge PASSED\n");
+    }
+    else {
+        printf("Challenge FAILED\n");
+    }
+    
+
+
+
+ 
     double challengeRunTime = (double)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
     double challengeRunRate = Nneurons * (DNNedges/challengeRunTime);
     printf("Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
