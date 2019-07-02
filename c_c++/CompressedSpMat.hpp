@@ -10,7 +10,7 @@
 #define COMPRESSEDSPMAT_HPP
 
 #include "Allocator.hpp"
-#include "triple.hpp"
+#include "Triple.hpp"
 
 /*
 template<typename Weight>
