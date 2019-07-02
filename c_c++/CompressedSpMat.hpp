@@ -6,8 +6,8 @@
  * (e) m.hasanzadeh.mofrad@pitt.edu
  */
  
-#ifndef CompressedSpMat_HPP
-#define CompressedSpMat_HPP
+#ifndef COMPRESSEDSPMAT_HPP
+#define COMPRESSEDSPMAT_HPP
 
 #include "Allocator.hpp"
 #include "triple.hpp"
@@ -342,6 +342,7 @@ struct CSR {
         ~CSR();
         void populate(std::vector<struct Triple<Weight>> &triples);
         void populate(struct Triple<Weight> &triple);
+        void populate_spa(std::vector<struct Triple<Weight>> &triples);
         void postpopulate();
         void walk();
         uint64_t numnonzeros() const { return(nnz); };
@@ -425,14 +426,22 @@ void CSR<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
 
 template<typename Weight>
 void CSR<Weight>::populate(struct Triple<Weight> &triple) {
-    
     IA[triple.row+1]++;
     //printf("<%d %d %f %lu %d>\n", triple.row, triple.col, triple.weight, idx, IA[triple.row+1]);
     JA[idx] = triple.col;
     A[idx] = triple.weight;
     idx++;
-    
-    
+}
+
+template<typename Weight>
+void CSR<Weight>::populate_spa(std::vector<struct Triple<Weight>> &triples) {
+    for(auto &triple: triples) {
+        IA[triple.row+1]++;
+        //printf("<%d %d %f %lu %d>\n", triple.row, triple.col, triple.weight, idx, IA[triple.row+1]);
+        JA[idx] = triple.col;
+        A[idx] = triple.weight;
+        idx++;
+    }
 }
 
 template<typename Weight>
@@ -458,12 +467,14 @@ void CSR<Weight>::postpopulate() {
 template<typename Weight>
 void CSR<Weight>::walk() {
     for(uint32_t i = 0; i < nrows; i++) {
-        printf("i=%d\n", i);
+        //printf("i=%d\n", i);
         for(uint32_t j = IA[i]; j < IA[i + 1]; j++) {
             JA[j];
             A[j];
             //printf("    i=%d, j=%d, value=%f\n", i, JA[j], A[j]);
-            std::cout << "i=" << i << ",j=" << JA[j] <<  ",value=" << A[j] << std::endl;
+            //std::cout << "i=" << i << ",j=" << JA[j] <<  ",value=" << A[j] << std::endl;
+            //if(A[j] == 0)
+                std::cout << "i=" << i << ",j=" << JA[j] <<  ",value=" << A[j] << std::endl;
         }
     }
 }
