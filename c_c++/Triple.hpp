@@ -4,8 +4,8 @@
  * (e) m.hasanzadeh.mofrad@pitt.edu
  */
  
-#ifndef Triple_HPP
-#define Triple_HPP
+#ifndef TRIPLE_HPP
+#define TRIPLE_HPP
 
 template<typename Weight>
 struct Triple {
