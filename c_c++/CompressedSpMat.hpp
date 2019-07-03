@@ -139,8 +139,8 @@ struct CSC {
         void updaterownelems(std::vector<uint32_t> *rowncols_);
         void walk();
         uint64_t numnonzeros() const { return(nnz); };
-        uint64_t numrows()   const { return(nrows); };
-        uint64_t numcols()   const { return(ncols); };
+        uint32_t numrows()   const { return(nrows); };
+        uint32_t numcols()   const { return(ncols); };
         uint64_t size()        const { return(nbytes); };
         uint32_t nrows;
         uint32_t ncols;
@@ -220,9 +220,14 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
 template<typename Weight>
 void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vector<uint32_t> *rowncols_) {
     if(ncols and nnz) {
-        
+        //printf("xxxx\n");
         std::vector<uint32_t> &rowncols = *rowncols_;
         rownelems.resize(rowncols.size());
+        
+        //for(int i = 0; i < rowncols.size(); i++) {
+          //      printf("%d ", rowncols[i]);
+           // }
+        
         //if(rowncols) {
             //printf("hastesh\n");
             //for(int i = 0; i < rowncols.size(); i++) {
@@ -253,10 +258,10 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
         //colnrows.resize(ncols);
         
         
-        
+        //printf("hastesh %d\n", triples.size());  
         ColSort<Weight> f_col;
         std::sort(triples.begin(), triples.end(), f_col);
-        
+         
         uint32_t i = 0;
         uint32_t j = 1;
         JA[0] = 0;
@@ -283,6 +288,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
             A[i] = triple.weight;
             i++;
         }
+     //printf("DONE %d\n", 1);  
         if((j + 1) > ncols) {
             //colnrows[j-1] = JA[j] - JA[j-1];
             
@@ -297,6 +303,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
                 */
             }
         }
+        
         while((j + 1) < ncols) {
             //colnrows[j-1] = JA[j] - JA[j-1];
             j++;
