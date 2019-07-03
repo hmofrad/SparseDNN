@@ -23,17 +23,21 @@
 #include "SparseOps.cpp"
 
 
-/*
-double elapsed_time1, start1, finish1;
+
+double elapsed_time1;
+std::chrono::high_resolution_clock::time_point start1, finish1;
+
 void tic() { 
     start1 = std::chrono::high_resolution_clock::now();
 }
-void toc() { 
+void toc(std::string str = " ");
+void toc(std::string str) { 
     finish1 = std::chrono::high_resolution_clock::now();
-    elapsed_time = (double)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish1-start1).count())/1e9;
-    printf("elapsed_time=%f", elapsed_time);
+    elapsed_time1 = (double)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish1-start1).count())/1e9;
+    printf("elapsed_time - %s =%f\n", str.c_str(), elapsed_time1);
 }
-*/
+
+
 
 
 //scores = inferenceReLUvec(layers,bias,featureVectors); 
