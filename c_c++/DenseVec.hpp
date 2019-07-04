@@ -15,6 +15,7 @@ struct DenseVec {
         DenseVec() {nitems = 0; nbytes = 0, A = nullptr;};
         DenseVec(uint32_t nitems_);
         ~DenseVec();
+        void clear();
         void walk();
         uint64_t nitems;
         uint64_t nbytes;
@@ -33,6 +34,11 @@ template<typename Data_Type>
 DenseVec<Data_Type>::~DenseVec(){
     delete A_blk;
     A = nullptr;
+}
+
+template<typename Data_Type>
+void DenseVec<Data_Type>::clear(){
+    A_blk->clear();
 }
 
 template<typename Data_Type>
