@@ -1,12 +1,12 @@
 /*
- * CompressedSpMat.hpp: Compressed Sparse Matrix formats
+ * SparseMat.hpp: Sparse Matrix formats
  * Compressed Sparse Column (CSC)
  * (C) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@pitt.edu
  */
  
-#ifndef COMPRESSEDSPMAT_HPP
-#define COMPRESSEDSPMAT_HPP
+#ifndef SPARSEMAT_HPP
+#define SPARSEMAT_HPP
 
 #include <numeric>
 
@@ -27,6 +27,7 @@ struct CSC {
         uint32_t numrows()   const { return(nrows); };
         uint32_t numcols()   const { return(ncols); };
         uint64_t size()        const { return(nbytes); };
+        void prepopulate(std::vector<struct Triple<Weight>> &triples);
         void populate_spa(struct DenseVec<Weight> *SPA_Vector, uint32_t col_idx);
         void postpopulate();
         void repopulate(struct CSC<Weight> *other_csc);
@@ -36,8 +37,9 @@ struct CSC {
         uint64_t nnz;
         uint64_t nbytes;
         uint64_t idx;
-        std::vector<uint32_t>  colnrows;
-        std::vector<uint32_t> rownelems;
+        std::vector<char>  validrows;
+        //std::vector<uint32_t>  colnrows;
+        //std::vector<uint32_t> rownelems;
         //std::vector<uint32_t> *rowncols;
         uint32_t *IA; // Rows
         uint32_t *JA; // Cols
@@ -63,6 +65,7 @@ CSC<Weight>::CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_alig
     nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
     idx = 0;
     JA[0] = 0;
+    validrows.resize(nrows);
 }
 
 
@@ -77,15 +80,43 @@ CSC<Weight>::~CSC(){
 }
 
 template<typename Weight>
+void CSC<Weight>::prepopulate(std::vector<struct Triple<Weight>> &triples) {
+    ColSort<Weight> f_col;
+    std::sort(triples.begin(), triples.end(), f_col);
+    for(uint64_t i = 1; i < triples.size(); i++) {
+        if(triples[i-1].col == triples[i].col) {
+            if(triples[i-1].row == triples[i].row) {
+                triples[i].weight += triples[i-1].weight;
+                triples.erase(triples.begin()+i-1);
+            }
+        }
+    }
+}
+
+
+template<typename Weight>
 void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
     if(ncols and nnz) {
         //colnrows.resize(ncols);
-        
+        /*
         ColSort<Weight> f_col;
         std::sort(triples.begin(), triples.end(), f_col);
+        for(uint64_t i = 1; i < triples.size(); i++) {
+            if(triples[i-1].col == triples[i].col) {
+                if(triples[i-1].row == triples[i].row) {
+                    triples[i].weight += triples[i-1].weight;
+                    triples.erase(triples.begin()+i-1);
+                }
+            }
+        }
+        //for(auto t: triples)
+            printf("%d %d\n", nnz, triples.size());
+        */
+        //exit(0);
         
         uint32_t i = 0;
         uint32_t j = 1;
+        
         JA[0] = 0;
         for(auto &triple : triples) {
             while((j - 1) != triple.col) {
@@ -96,6 +127,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
             JA[j]++;
             IA[i] = triple.row;
             A[i] = triple.weight;
+            validrows[triple.row] = 1;
             i++;
         }
         //if((j + 1) > ncols) {
@@ -107,13 +139,15 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
             JA[j] = JA[j - 1];
         }
     }
+    //walk();
+    //exit(0);
 }
-
+/*
 template<typename Weight>
 void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vector<uint32_t> *rowncols_) {
     if(ncols and nnz) {
         //printf("xxxx\n");
-        std::vector<uint32_t> &rowncols = *rowncols_;
+        //std::vector<uint32_t> &rowncols = *rowncols_;
         rownelems.resize(rowncols.size());
         
         //for(int i = 0; i < rowncols.size(); i++) {
@@ -132,16 +166,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
             
             //printf("%d %d %d\n", rowncols->operator[](2), rowncols->at(2), rowncols->size());
             
-            /*
-            for(auto i: *(rowncols)) {
-                printf("%d ", i);
-            }
-            printf("\n");
-            */
-            /*
-            std::vector<uint32_t> &r = *rowncols_;
-            printf("%d\n", r[3]);
-            */
+
             
         //}
         //else
@@ -164,12 +189,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
                 if(JA[j] - JA[j-1]) {
                 //if(colnrows[j-1]) {
                     updaterownelems(rowncols_);
-                    /*
-                    for(uint32_t i = 0; i < rowncols.size(); i++) {
-                        if(rowncols[i])
-                            rownelems[i]++;
-                    }
-                    */
+                
                 }
                 
                 j++;
@@ -187,12 +207,7 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
             if(JA[j] - JA[j-1]) {
             //if(colnrows[j-1]) {
                 updaterownelems(rowncols_);
-                /*
-                for(uint32_t i = 0; i < rowncols.size(); i++) {
-                    if(rowncols[i])
-                        rownelems[i]++;
-                }
-                */
+                
             }
         }
         
@@ -202,14 +217,10 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples, std::vec
             JA[j] = JA[j - 1];
         }
         
-        /*
-            for(auto &i: rownelems)
-                printf("%d ", i);
-            printf("\n");
-        //    exit(0);
-        */
+        
     }
 }
+
 
 template<typename Weight>
 void CSC<Weight>::updaterownelems(std::vector<uint32_t> *rowncols_) {
@@ -220,6 +231,8 @@ void CSC<Weight>::updaterownelems(std::vector<uint32_t> *rowncols_) {
         }
     }
 }
+
+*/
 
 template<typename Weight>
 void CSC<Weight>::populate_spa(struct DenseVec<Weight> *SPA_Vector, uint32_t col_idx) {
@@ -238,6 +251,7 @@ void CSC<Weight>::populate_spa(struct DenseVec<Weight> *SPA_Vector, uint32_t col
             JA[col_idx+1]++;
             IA[idx] = i;
             A[idx] = v;
+            validrows[i] = 1;
             idx++;
             
             v = 0;
@@ -302,6 +316,7 @@ void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc){
                 JA[j+1]++;
                 IA[idx] = o_IA[i];
                 A[idx]  = o_A[i];
+                validrows[o_IA[i]] = 1;
                 idx++;
             }
         }
@@ -567,6 +582,7 @@ CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint6
     type = type_;
     if(type == csc_only) {
         csc = new CSC<Weight>(nrows_, ncols_, nnz_, true);
+        csc->prepopulate(triples);
         if(rowncols_)
             csc->populate(triples, rowncols_);
         else
