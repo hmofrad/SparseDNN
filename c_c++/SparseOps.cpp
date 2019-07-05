@@ -12,7 +12,7 @@
 
 double YMIN = 0;
 double YMAX = 32;
-
+/*
 template<typename Weight>
 inline void SpMV_EW(struct CSR<Weight> *A_CSR, struct DenseVec<Weight> *x_VEC) {
     uint32_t *IA_A = A_CSR->IA;
@@ -98,6 +98,89 @@ inline void SpMM(struct CSR<Weight> *A_CSR, struct CSC<Weight> *B_CSC, struct CS
         }
     
 }       
+*/
+
+template<typename Weight>
+inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC) {
+    uint32_t *IA_A = A_CSC->IA;
+    uint32_t *JA_A = A_CSC->JA;
+    Weight   *A_A  = A_CSC->A;
+    uint32_t ncols_A = A_CSC->ncols;
+    uint32_t nrows_A = A_CSC->nrows;
+    std::vector<char> &rows_A = A_CSC->validrows;
+    
+    uint32_t *IA_B = B_CSC->IA;
+    uint32_t *JA_B = B_CSC->JA;
+    Weight   *A_B  = B_CSC->A;
+    uint32_t ncols_B = B_CSC->ncols;
+    uint32_t nrows_B = B_CSC->nrows;
+
+    uint64_t nnzmax = 0;
+    
+    /*
+    uint32_t i = 0;
+    uint32_t j = 0;
+    
+    uint64_t no = 0;
+    for(uint32_t i = 0; i < nrows_A; i++) {
+        if(rows_A[i]) {
+            for(uint32_t j = 0; j < ncols_B; j++) {
+                no++;
+                if(JA_B[j+1] - JA_B[j]) {
+                    nnzmax++;
+                }
+            }
+        }
+    }
+    */  
+    
+    
+    //uint32_t nrows;
+    
+    
+    struct DenseVec<Weight> *Vec = new struct DenseVec<Weight>(nrows_A);
+    auto *A_V = Vec->A;
+    for(uint32_t j = 0; j < ncols_B; j++) {
+        for(uint32_t k = JA_B[j]; k < JA_B[j+1]; k++) {
+            uint32_t l = IA_B[k];
+            //printf("%d %d %d\n", j, k, l);
+            //Weight t = 0;      
+            //nnzmax += (JA_A[l+1] - JA_A[l]);
+            
+                
+                
+            
+            for(uint32_t m = JA_A[l]; m < JA_A[l+1]; m++) {
+                A_V[IA_A[m]] = 1;
+             //   no++;
+            }
+
+            
+            //for(uint32_t m = JA_A[l]; m < JA_A[l+1]; m++) {
+              //  if(A_B[k] * A_A[m])
+                        
+            //}
+                //A_V[IA_A[m]] += A_B[k] * A_A[m];
+                
+            //}
+            //printf("t=%f \n", t);
+        }
+
+        for(uint32_t i = 0; i < nrows_A; i++) {
+           // no++;
+            auto &v = A_V[i];
+            if(v) {
+                nnzmax++;
+                v = 0;
+            }
+        }
+    }
+    
+    
+   // printf("%lu\n", no);
+    return(nnzmax);
+}
+
 
 
 template<typename Weight>
@@ -120,21 +203,23 @@ inline void SpMM1(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct C
     uint32_t ncols_C = C_CSC->ncols;
     uint32_t nrows_C = C_CSC->nrows;
     
-    
+    uint64_t ops = 0;
     //struct Triple<Weight> triple;
     struct DenseVec<Weight> *Vec = new struct DenseVec<Weight>(nrows_A);
+    auto *A_V = Vec->A;
     for(uint32_t j = 0; j < ncols_B; j++) {
         
-        auto *A_V = Vec->A;
+        
         for(uint32_t k = JA_B[j]; k < JA_B[j+1]; k++) {
             uint32_t l = IA_B[k];
             //printf("%d %d %d\n", j, k, l);
-            Weight t = 0;      
+            //Weight t = 0;      
             for(uint32_t m = JA_A[l]; m < JA_A[l+1]; m++) {
                 //std::cout << A_B[k] << " "  <<  A_A[m] << std::endl;
                 //printf("%f %f %d %f\n", A_B[k], A_A[m], IA_A[m], A_B[k] * A_A[m]);
                 //t += A_B[k] * A_A[m]; // IA_A[m] or IA_B[k]
                 A_V[IA_A[m]] += A_B[k] * A_A[m];
+             //   ops++;
             }
             //printf("t=%f \n", t);
         }
@@ -152,7 +237,8 @@ inline void SpMM1(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct C
         }
         */
         //printf("\n");
-    }              
+    }   
+    //printf("OPS=%lu\n", ops);    
 }
 
 template<typename Weight>
@@ -172,8 +258,8 @@ inline void SpMV_EW1(struct CSC<Weight> *A_CSC, struct DenseVec<Weight> *x_VEC) 
     
     for(uint32_t j = 0; j < ncols_A; j++) {
         for(uint32_t i = JA_A[j]; i < JA_A[j+1]; i++) {
-            //A_A[i] += A_x[j];
-            A_A[i] += -.3;
+            A_A[i] += A_x[j];
+            //A_A[i] += -.3;
             if(A_A[i] < YMIN) {
                 A_A[i] = YMIN;
             }
