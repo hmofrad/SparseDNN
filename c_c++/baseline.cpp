@@ -19,11 +19,11 @@
 
 #include "Triple.hpp"
 #include "DenseVec.hpp"
-#include "CompressedSpMat.hpp"
+#include "SparseMat.hpp"
 #include "SparseOps.cpp"
 
 
-
+//uint32_t maxLayers;
 double elapsed_time1;
 std::chrono::high_resolution_clock::time_point start1, finish1;
 
@@ -55,8 +55,8 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
     //for(uint32_t i = 0; i < W.size(); i++) {
     struct Triple<double> triple;
     std::vector<struct Triple<double>> triples;
-    //uint32_t maxLayers = W1.size();
-    uint32_t maxLayers = 120;
+    uint32_t maxLayers = W1.size();
+    
     
         for(uint32_t r = 0; r < maxLayers; r++) {
             auto *W_CSC = W1[r]->csc;
@@ -64,7 +64,10 @@ void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat,
             auto *B = B1[r];
             //printf("1.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
             
-            struct CompressedSpMat<double> *ZSpMat = new struct CompressedSpMat<double>(Y_CSC->nrows, W_CSC->ncols, Y_CSC->nrows * W_CSC->ncols, triples, Compression_Type::csc_only);
+            uint64_t nnzmax = SpMM_Sym<double>(Y_CSC, W_CSC);
+            printf("%lu %lu %lu %lu\n", Y_CSC->nnz, W_CSC->nnz, Y_CSC->nrows * W_CSC->ncols, nnzmax);
+            nnzmax = Y_CSC->nrows * W_CSC->ncols;
+            struct CompressedSpMat<double> *ZSpMat = new struct CompressedSpMat<double>(Y_CSC->nrows, W_CSC->ncols, nnzmax, triples, Compression_Type::csc_only);
             auto *Z_CSC = ZSpMat->csc;
             
             
@@ -255,7 +258,6 @@ int main(int argc, char **argv) {
         if(featuresTriple.col > ncolsFeatures)
             ncolsFeatures = featuresTriple.col;
     }
-    fin.close();
     
     printf("INFO: Done  reading the features file %s\n", featuresFile.c_str());
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrowsFeatures, ncolsFeatures, featuresTriples.size());
@@ -408,22 +410,31 @@ int main(int argc, char **argv) {
     }
     */
     
-    std::vector<int32_t> predictedCategories;
+ 
+    
+    std::vector<double> allCategories(nrowsFeatures + 1);
+    
     auto &Y = featuresSpMat;
     auto *Y_CSC = Y.csc;
     for(uint32_t j = 0; j < Y_CSC->ncols; j++) {
         double s = 0;
         for(uint32_t i = Y_CSC->JA[j]; i < Y_CSC->JA[j+1]; i++) {
-            s += Y_CSC->A[i];
-        }
-        if( s > 0) {
-            predictedCategories.push_back(j);
+            allCategories[Y_CSC->IA[i]] += Y_CSC->A[i];
         }
     }
     
+    std::vector<int32_t> predictedCategories;
+    for(uint32_t i = 0; i < nrowsFeatures + 1; i++) {
+        //printf("%d %f\n", i, allCategories[i]);
+        if(allCategories[i])
+            predictedCategories.push_back(i);
+    }
+    //printf("%d %d %d\n", allCategories.size(), predictedCategories.size(), Ncategories);
     bool tf = true;
     if(Ncategories == predictedCategories.size()) {
+        
         for(int32_t i = 0; i < Ncategories; i++) {
+      //      printf("%d %d\n", trueCategories[i], predictedCategories[i]);
             if(predictedCategories[i] != trueCategories[i]) {
                 tf = false;
                 break;
