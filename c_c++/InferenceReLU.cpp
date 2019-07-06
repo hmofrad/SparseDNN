@@ -22,10 +22,13 @@ void inferenceReLU(std::vector<struct CompressedSpMat<double>*> &layersSpMat, st
         auto *Y_CSC = Y.csc;
         auto *B = B1[r];
         uint64_t nnzmax = SpMM_Sym<double>(Y_CSC, W_CSC);
-        nnzmax = Y_CSC->nrows * W_CSC->ncols;
+        //nnzmax = Y_CSC->nrows * W_CSC->ncols;
+        //struct CompressedSpMat<double> *
         ZSpMat = new struct CompressedSpMat<double>(Y_CSC->nrows, W_CSC->ncols, nnzmax, triples, Compression_Type::csc_fmt);
         auto *Z_CSC = ZSpMat->csc;
+        //SpMM<double>(Y_CSC, W_CSC, Z_CSC, spa_DVEC);
         SpMM<double>(Y_CSC, W_CSC, Z_CSC, spa_DVEC, B);
+        //SpMM<double>(Y_CSC, W_CSC, Z_CSC);
         Z_CSC->postpopulate();
         //SpMV_EW<double> (Z_CSC, B);  
         Y_CSC->repopulate(Z_CSC);
