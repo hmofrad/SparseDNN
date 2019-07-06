@@ -1,7 +1,7 @@
 /*
- * triple.hpp: Triple data structure
+ * Triple.hpp: Triple data structure
  * (C) Mohammad Hasanzadeh Mofrad, 2019
- * (e) m.hasanzadeh.mofrad@pitt.edu
+ * (e) m.hasanzadeh.mofrad@gmail.com
  */
  
 #ifndef TRIPLE_HPP
