@@ -20,7 +20,7 @@
 #include "DenseVec.hpp"
 #include "SparseMat.hpp"
 #include "SparseOps.cpp"
-#include "inferenceReLU.cpp"
+#include "InferenceReLU.cpp"
 
 
 
@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
     std::vector<struct DenseVec<double>*> biasesDenseVec;
 
     printf("INFO: Start reading %d layer files\n", maxLayers);
-    maxLayers = 1;
+    //maxLayers = 1;
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
         std::string layerFile = ((std::string) argv[6]) + "/neuron" + std::to_string(Nneurons) + "/n" + std::to_string(Nneurons) + "-l" + std::to_string(i+1) + ".tsv";
