@@ -11,7 +11,8 @@
 #define SPARSEOPS_CPP
 
 template<typename Weight>
-inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC) {
+inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC){
+                         //struct DenseVec<Weight> *spa_DVEC) {
     uint32_t *IA_A = A_CSC->IA;
     uint32_t *JA_A = A_CSC->JA;
     Weight   *A_A  = A_CSC->A;
@@ -23,16 +24,16 @@ inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC) {
     Weight   *A_B  = B_CSC->A;
     uint32_t ncols_B = B_CSC->ncols;
     uint32_t nrows_B = B_CSC->nrows;
-/*    
-    uint32_t *IA_C = C_CSC->IA;
-    uint32_t *JA_C = C_CSC->JA;
-    Weight   *A_C  = C_CSC->A;
-    uint32_t ncols_C = C_CSC->ncols;
-    uint32_t nrows_C = C_CSC->nrows;
-    uint32_t idx_C = C_CSC->idx;
-    uint32_t nnz_C = C_CSC->nnz;
-*/
+    
+    //auto *A_V = Vec->A;
+
     uint64_t nnzmax = 0;
+    
+    if(ncols_A != nrows_B) {
+        fprintf(stderr, "Error: SpMM dimensions do not agree A[%d %d] B[%d %d]\n", nrows_A, ncols_A, nrows_B, ncols_B);
+        exit(1);
+    }
+    
     
     /*
     uint32_t i = 0;
@@ -55,8 +56,9 @@ inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC) {
     //uint32_t nrows;
     
     
-    struct DenseVec<Weight> *Vec = new struct DenseVec<Weight>(nrows_A);
-    auto *A_V = Vec->A;
+    struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(nrows_A);
+    auto *A_V = spa_DVEC->A;
+    
     for(uint32_t j = 0; j < ncols_B; j++) {
         for(uint32_t k = JA_B[j]; k < JA_B[j+1]; k++) {
             uint32_t l = IA_B[k];
@@ -85,14 +87,14 @@ inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC) {
 
         for(uint32_t i = 0; i < nrows_A; i++) {
            // no++;
-            auto &v = A_V[i];
-            if(v) {
+            //auto &v = A_V[i];
+            if(A_V[i]) {
                 nnzmax++;
-                v = 0;
+                A_V[i] = 0;
             }
         }
     }
-    
+    delete spa_DVEC;
     
    // printf("%lu\n", no);
     return(nnzmax);
@@ -101,7 +103,7 @@ inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC) {
 
 
 template<typename Weight>
-inline void SpMM(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct CSC<Weight> *C_CSC, 
+inline void SpMM(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct CSC<Weight> *C_CSC,
                  struct DenseVec<Weight> *spa_DVEC, struct DenseVec<Weight> *x_DVEC) {
     uint32_t *IA_A = A_CSC->IA;
     uint32_t *JA_A = A_CSC->JA;
@@ -118,7 +120,10 @@ inline void SpMM(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct CS
     uint32_t nrows_C = C_CSC->nrows;
     uint32_t ncols_C = C_CSC->ncols;
     
+    auto *A_V = spa_DVEC->A;    
     uint32_t nitems_x = x_DVEC->nitems;
+    
+
     
     if((ncols_A != nrows_B) or (nrows_A != nrows_C) or (ncols_B != ncols_C)) {
         fprintf(stderr, "Error: SpMM dimensions do not agree C[%d %d] != A[%d %d] B[%d %d]\n", nrows_C, ncols_C, nrows_A, ncols_A, nrows_B, ncols_B);
@@ -129,9 +134,10 @@ inline void SpMM(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct CS
         fprintf(stderr, "Error: SpMV_EW dimensions do not agree [%d != %d]\n", ncols_C, nitems_x);
         exit(1);
     }
+   
     
-    //struct DenseVec<Weight> *Vec = new struct DenseVec<Weight>(nrows_A);
-    auto *A_V = spa_DVEC->A;
+    //struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(nrows_A);
+    
     for(uint32_t j = 0; j < ncols_B; j++) {
         for(uint32_t k = JA_B[j]; k < JA_B[j+1]; k++) {
             uint32_t l = IA_B[k];
@@ -139,9 +145,11 @@ inline void SpMM(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct CS
                 A_V[IA_A[m]] += A_B[k] * A_A[m];
             }
         }
+        //C_CSC->populate_spa(spa_DVEC, j);
         C_CSC->populate_spa(spa_DVEC, x_DVEC, j);
     } 
-    //delete Vec;
+    //delete spa_DVEC;
+    
 }
 
 template<typename Weight>
