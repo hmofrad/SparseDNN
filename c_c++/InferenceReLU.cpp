@@ -16,6 +16,7 @@ void inferenceReLU(std::vector<struct CompressedSpMat<double>*> &layersSpMat, st
     std::vector<struct Triple<double>> triples;
     uint32_t maxLayers = W1.size();
     struct CompressedSpMat<double> *ZSpMat;
+    struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(Y.csc->nrows);
     for(uint32_t r = 0; r < maxLayers; r++) {
         auto *W_CSC = W1[r]->csc;
         auto *Y_CSC = Y.csc;
@@ -24,13 +25,14 @@ void inferenceReLU(std::vector<struct CompressedSpMat<double>*> &layersSpMat, st
         nnzmax = Y_CSC->nrows * W_CSC->ncols;
         ZSpMat = new struct CompressedSpMat<double>(Y_CSC->nrows, W_CSC->ncols, nnzmax, triples, Compression_Type::csc_fmt);
         auto *Z_CSC = ZSpMat->csc;
-        SpMM<double>(Y_CSC, W_CSC, Z_CSC);
+        SpMM<double>(Y_CSC, W_CSC, Z_CSC, spa_DVEC, B);
         Z_CSC->postpopulate();
-        SpMV_EW<double> (Z_CSC, B);  
+        //SpMV_EW<double> (Z_CSC, B);  
         Y_CSC->repopulate(Z_CSC);
         delete ZSpMat;      
         printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
     }
+    delete spa_DVEC;
 }
 
 #endif
