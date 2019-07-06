@@ -23,7 +23,7 @@ struct CSC {
         void populate(std::vector<struct Triple<Weight>> &triples);
         void postpopulate();
         void repopulate(struct CSC<Weight> *other_csc);
-        void populate_spa(struct DenseVec<Weight> *SPA_Vector, uint32_t col_idx);
+        void populate_spa(struct DenseVec<Weight> *spa_DVEC, struct DenseVec<Weight> *x_DVEC, uint32_t col_idx);
         void walk();
         uint64_t numnonzeros() const { return(nnz); };
         uint32_t numrows()   const { return(nrows); };
@@ -115,18 +115,44 @@ void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
 }
 
 template<typename Weight>
-void CSC<Weight>::populate_spa(struct DenseVec<Weight> *SPA_Vector, uint32_t col_idx) {
+void CSC<Weight>::populate_spa(struct DenseVec<Weight> *spa_DVEC, struct DenseVec<Weight> *x_DVEC, uint32_t col_idx) {
+    Weight YMIN = 0;
+    Weight YMAX = 32;
+    Weight   *spa_A = spa_DVEC->A;
+    Weight   *x_A = x_DVEC->A;
     JA[col_idx+1] += JA[col_idx];
     for(uint32_t i = 0; i < nrows; i++) {
-        auto &v = SPA_Vector->A[i];
-        if(v) {
+        //auto &v = spa_A[i];
+        if(spa_A[i]) {
             JA[col_idx+1]++;
             IA[idx] = i;
-            A[idx] = v;
+            
+            A[idx] = spa_A[i] + x_A[col_idx];
+            if(A[idx] < YMIN) {
+                A[idx] = YMIN;
+            }
+            else if(A[idx] > YMAX) {
+                A[idx] = YMAX;
+            }
+            
             idx++;
-            v = 0;
+            spa_A[i] = 0;
         }
     }
+    
+    /*
+     for(uint32_t j = 0; j < ncols_A; j++) {
+        for(uint32_t i = JA_A[j]; i < JA_A[j+1]; i++) {
+            A_A[i] += A_x[j];
+            if(A_A[i] < YMIN) {
+                A_A[i] = YMIN;
+            }
+            else if(A_A[i] > YMAX) {
+                A_A[i] = YMAX;
+            }
+        }
+    }
+    */
 }
 
 template<typename Weight>
