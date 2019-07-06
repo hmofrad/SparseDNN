@@ -1,7 +1,7 @@
 /*
  * DenseVec.hpp: Dense vector
  * (C) Mohammad Hasanzadeh Mofrad, 2019
- * (e) m.hasanzadeh.mofrad@pitt.edu
+ * (e) m.hasanzadeh.mofrad@gmail.com
  */
  
 #ifndef DENSEVEC_HPP
@@ -46,7 +46,4 @@ void DenseVec<Data_Type>::walk() {
     for(uint64_t i = 0; i < nitems; i++)
         std::cout << i << " " << A[i] << std::endl;
 }
-
-
-
 #endif
