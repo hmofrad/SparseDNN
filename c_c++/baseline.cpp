@@ -46,44 +46,47 @@ void toc(std::string str) {
 template<typename Weight>    
 //void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat, std::vector<struct CompressedSpMat<double>*> &biasesSpMat, struct CompressedSpMat<uint32_t> &featuresSpMat) {    
 void inferenceReLUvec(std::vector<struct CompressedSpMat<double>*> &layersSpMat, std::vector<struct DenseVec<double>*> &biasesDenseVec, struct CompressedSpMat<double> &featuresSpMat) {    
+    
     auto &W1 = layersSpMat;
     auto &B1 = biasesDenseVec;
     auto &Y0 = featuresSpMat;
     //printf("%lu %lu %lu\n", W.size(), B.size(), Y0.size());
-
+    
     auto &Y = Y0;
     //for(uint32_t i = 0; i < W.size(); i++) {
     struct Triple<double> triple;
     std::vector<struct Triple<double>> triples;
     uint32_t maxLayers = W1.size();
     
-    
+    //printf("maxLayers = %d\n", maxLayers);
         for(uint32_t r = 0; r < maxLayers; r++) {
             auto *W_CSC = W1[r]->csc;
             auto *Y_CSC = Y.csc;
+            //auto *Y_CSR = Y.csr;
             auto *B = B1[r];
             //printf("1.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
             
             uint64_t nnzmax = SpMM_Sym<double>(Y_CSC, W_CSC);
-            printf("%lu %lu %lu %lu\n", Y_CSC->nnz, W_CSC->nnz, Y_CSC->nrows * W_CSC->ncols, nnzmax);
+            //printf("2.%lu %lu %lu %lu\n", Y_CSC->nnz, W_CSC->nnz, Y_CSC->nrows * W_CSC->ncols, nnzmax);
             nnzmax = Y_CSC->nrows * W_CSC->ncols;
-            struct CompressedSpMat<double> *ZSpMat = new struct CompressedSpMat<double>(Y_CSC->nrows, W_CSC->ncols, nnzmax, triples, Compression_Type::csc_only);
+            struct CompressedSpMat<double> *ZSpMat = new struct CompressedSpMat<double>(Y_CSC->nrows, W_CSC->ncols, nnzmax, triples, Compression_Type::csc_fmt);
             auto *Z_CSC = ZSpMat->csc;
-            
-            
+            //W_CSC->walk();
+            //Y_CSC->walk();
             SpMM1<double>(Y_CSC, W_CSC, Z_CSC);
-            //printf("1.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros());             
+            //printf("3.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros());             
             Z_CSC->postpopulate();
+            //printf("4xxxx>>>>>\n");
             //Z_CSC->walk();    
 
             
             
             SpMV_EW1<double> (Z_CSC, B);  
-            
+            //printf("5555555xxxx>>>>>\n");
             Y_CSC->repopulate(Z_CSC);
             
-            printf("2.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
-            printf("2.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros());             
+            printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+            //printf("2.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros());             
             
             delete ZSpMat;   
             
@@ -258,13 +261,13 @@ int main(int argc, char **argv) {
         if(featuresTriple.col > ncolsFeatures)
             ncolsFeatures = featuresTriple.col;
     }
-    
+    fin.close();
     printf("INFO: Done  reading the features file %s\n", featuresFile.c_str());
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrowsFeatures, ncolsFeatures, featuresTriples.size());
     
     
     //struct CompressedSpMat<double> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::csr_only);
-    struct CompressedSpMat<double> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::csc_only);
+    struct CompressedSpMat<double> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::dcsc_fmt);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
 
@@ -311,7 +314,7 @@ int main(int argc, char **argv) {
     std::vector<struct DenseVec<double>*> biasesDenseVec;
 
     printf("INFO: Start reading %d layer files\n", maxLayers);
-    //maxLayers = 3;
+    maxLayers = 1;
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
         std::string layerFile = ((std::string) argv[6]) + "/neuron" + std::to_string(Nneurons) + "/n" + std::to_string(Nneurons) + "-l" + std::to_string(i+1) + ".tsv";
@@ -340,7 +343,7 @@ int main(int argc, char **argv) {
         fin.close();
         DNNedges += layerTriples.size();
 
-        struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::csc_only);
+        struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::csc_fmt);
         //struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::csc_only, &featuresSpMat.csr->rowncols);
         //struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (Nneurons + 1), layerTriples.size(), layerTriples, Compression_Type::csr_only);
         layersSpMat.push_back(layerSpMat);
