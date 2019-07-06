@@ -1,5 +1,5 @@
 /*
- * baseline.cpp: Baseline implementation of Sparse Deep Neural Network 
+ * main.cpp: Driver code for running Sparse Deep Neural Network 
  * for Radix-Net sparse DNN generator
  * (C) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@gmail.com
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     
     
     //struct CompressedSpMat<double> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::csr_only);
-    struct CompressedSpMat<double> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::csc_fmt);
+    struct CompressedSpMat<double> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::dcsc_fmt);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
 
@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
     std::vector<struct DenseVec<double>*> biasesDenseVec;
 
     printf("INFO: Start reading %d layer files\n", maxLayers);
-    //maxLayers = 1;
+    maxLayers = 1;
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
         std::string layerFile = ((std::string) argv[6]) + "/neuron" + std::to_string(Nneurons) + "/n" + std::to_string(Nneurons) + "-l" + std::to_string(i+1) + ".tsv";
@@ -181,7 +181,7 @@ int main(int argc, char **argv) {
     printf("Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
     
     start = std::chrono::high_resolution_clock::now();
-    inferenceReLU<double>(layersSpMat, biasesDenseVec, featuresSpMat);
+    //inferenceReLU<double>(layersSpMat, biasesDenseVec, featuresSpMat);
     finish = std::chrono::high_resolution_clock::now();
     double challengeRunTime = (double)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
     double challengeRunRate = Nneurons * (DNNedges/challengeRunTime);
