@@ -22,7 +22,8 @@
 #include "SparseOps.cpp"
 #include "InferenceReLU.cpp"
 
-
+using WGT = double; 
+Compression_Type CT = Compression_Type::dcsc_fmt;
 
 int main(int argc, char **argv) {
     printf("INFO: Welcome to Sparse Deep Neural Network Serial Implementation\n");
@@ -31,7 +32,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "USAGE: %s -n <Nneurons> -l <maxLayers> <path_to_input> <path_to_dnn>\n", argv[0]);
         exit(1);         
     }
-    std::vector<double> neuralNetBias = {0, -0.3,-0.35,-0.4,-0.45};
+    std::vector<WGT> neuralNetBias = {0, -0.3,-0.35,-0.4,-0.45};
     uint32_t Nneurons = atoi(argv[2]);
     std::vector<uint32_t> NneuronsVector = {3, 1024, 4096, 16384, 65536};
     std::ptrdiff_t idxN = std::distance(NneuronsVector.begin(), std::find(NneuronsVector.begin(), NneuronsVector.end(), Nneurons));
@@ -39,7 +40,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Invalid number of neurons/layer %d\n", Nneurons);
         exit(1);
     }    
-    double biasValue = neuralNetBias[idxN];
+    WGT biasValue = neuralNetBias[idxN];
     
     std::string featuresFile = ((std::string) argv[5]) + "/sparse-images-" + std::to_string(Nneurons) + ".tsv";
     printf("INFO: Start reading the features file %s\n", featuresFile.c_str());
@@ -51,8 +52,8 @@ int main(int argc, char **argv) {
 
     uint64_t nrowsFeatures = 0; 
     uint64_t ncolsFeatures = 0;
-    std::vector<struct Triple<double>> featuresTriples;
-    struct Triple<double> featuresTriple;
+    std::vector<struct Triple<WGT>> featuresTriples;
+    struct Triple<WGT> featuresTriple;
     std::string line;
     std::istringstream iss;
     while (std::getline(fin, line)) {
@@ -71,8 +72,8 @@ int main(int argc, char **argv) {
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrowsFeatures, ncolsFeatures, featuresTriples.size());
     
     
-    //struct CompressedSpMat<double> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::csr_only);
-    struct CompressedSpMat<double> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::dcsc_fmt);
+    //struct CompressedSpMat<WGT> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::csr_only);
+    struct CompressedSpMat<WGT> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
 
@@ -109,14 +110,14 @@ int main(int argc, char **argv) {
 
     uint64_t DNNedges = 0;
     
-    std::vector<struct Triple<double>> layerTriples;
-    struct Triple<double> layerTriple;  
-    std::vector<struct CompressedSpMat<double>*> layersSpMat;
+    std::vector<struct Triple<WGT>> layerTriples;
+    struct Triple<WGT> layerTriple;  
+    std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     
-    //std::vector<struct Triple<double>> biasTriples;
-    //struct Triple<double> biasTriple;  
-    //std::vector<struct CompressedSpMat<double>*> biasesSpMat;
-    std::vector<struct DenseVec<double>*> biasesDenseVec;
+    //std::vector<struct Triple<WGT>> biasTriples;
+    //struct Triple<WGT> biasTriple;  
+    //std::vector<struct CompressedSpMat<WGT>*> biasesSpMat;
+    std::vector<struct DenseVec<WGT>*> biasesDenseVec;
 
     printf("INFO: Start reading %d layer files\n", maxLayers);
     maxLayers = 1;
@@ -148,15 +149,15 @@ int main(int argc, char **argv) {
         fin.close();
         DNNedges += layerTriples.size();
 
-        struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::csc_fmt);
-        //struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::csc_only, &featuresSpMat.csr->rowncols);
-        //struct CompressedSpMat<double> *layerSpMat = new struct CompressedSpMat<double>((Nneurons + 1), (Nneurons + 1), layerTriples.size(), layerTriples, Compression_Type::csr_only);
+        struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, CT);
+        //struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::csc_only, &featuresSpMat.csr->rowncols);
+        //struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (Nneurons + 1), layerTriples.size(), layerTriples, Compression_Type::csr_only);
         layersSpMat.push_back(layerSpMat);
         layerTriples.clear();
         layerTriples.shrink_to_fit();
         
-        //struct DenseVec<double> *biaseDenseVec = new struct DenseVec<double>((ncolsFeatures + 1));
-        struct DenseVec<double> *biaseDenseVec = new struct DenseVec<double>((Nneurons + 1));
+        //struct DenseVec<WGT> *biaseDenseVec = new struct DenseVec<WGT>((ncolsFeatures + 1));
+        struct DenseVec<WGT> *biaseDenseVec = new struct DenseVec<WGT>((Nneurons + 1));
         auto &bias_A = biaseDenseVec->A;
         //for(uint32_t j = 1; j < ncolsFeatures+1; j++) {
         for(uint32_t j = 1; j < Nneurons+1; j++) {
@@ -168,32 +169,32 @@ int main(int argc, char **argv) {
     } 
     
     /*
-    struct CompressedSpMat<double> featuresSpMat((Nneurons + 1),(ncolsFeatures + 1), featuresTriples.size(), featuresTriples, Compression_Type::csc_only, &layersSpMat[0]->csr->rowncols);
+    struct CompressedSpMat<WGT> featuresSpMat((Nneurons + 1),(ncolsFeatures + 1), featuresTriples.size(), featuresTriples, Compression_Type::csc_only, &layersSpMat[0]->csr->rowncols);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
     */
     
     auto finish = std::chrono::high_resolution_clock::now();
     printf("INFO: Done  reading %d layer files\n", maxLayers);
-    double readLayerTime = (double)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
-    double readLayerRate = (double) DNNedges/readLayerTime;
+    WGT readLayerTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
+    WGT readLayerRate = (WGT) DNNedges/readLayerTime;
     printf("DNN neurons/layer: %d, layers:%d, edges:%lu\n", Nneurons, maxLayers, DNNedges);
     printf("Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
     
     start = std::chrono::high_resolution_clock::now();
-    //inferenceReLU<double>(layersSpMat, biasesDenseVec, featuresSpMat);
+    inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat);
     finish = std::chrono::high_resolution_clock::now();
-    double challengeRunTime = (double)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
-    double challengeRunRate = Nneurons * (DNNedges/challengeRunTime);
-    
-    
+    WGT challengeRunTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
+    WGT challengeRunRate = Nneurons * (DNNedges/challengeRunTime);
     printf("Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
+    
+    validate_prediction<WGT>(featuresSpMat, trueCategories);
     /*
     std::vector<int32_t> predictedCategories;
     auto &Y = featuresSpMat;
     auto *Y_CSR = Y.csr;
     for(uint32_t i = 0; i < Y_CSR->nrows; i++) {
-        double s = 0;
+        WGT s = 0;
         for(uint32_t j = Y_CSR->IA[i]; j < Y_CSR->IA[i+1]; j++) {
             s += Y_CSR->A[j];
         }
@@ -208,7 +209,7 @@ int main(int argc, char **argv) {
     auto &Y = featuresSpMat;
     auto *Y_CSC = Y.csc;
     for(uint32_t j = 0; j < Y_CSC->ncols; j++) {
-        double s = 0;
+        WGT s = 0;
         for(uint32_t i = Y_CSC->JA[j]; i < Y_CSC->JA[j+1]; i++) {
             s += Y_CSC->A[i];
         }
@@ -219,13 +220,13 @@ int main(int argc, char **argv) {
     */
     
  
-    
-    std::vector<double> allCategories(nrowsFeatures + 1);
+    /*
+    std::vector<WGT> allCategories(nrowsFeatures + 1);
     
     auto &Y = featuresSpMat;
     auto *Y_CSC = Y.csc;
     for(uint32_t j = 0; j < Y_CSC->ncols; j++) {
-        double s = 0;
+        WGT s = 0;
         for(uint32_t i = Y_CSC->JA[j]; i < Y_CSC->JA[j+1]; i++) {
             allCategories[Y_CSC->IA[i]] += Y_CSC->A[i];
         }
@@ -259,12 +260,12 @@ int main(int argc, char **argv) {
     else {
         printf("Challenge FAILED\n");
     }
-    
+    */
 
 
 
  
-    
+
     for(uint32_t i = 0; i < maxLayers; i++) {  
         delete layersSpMat[i];
         delete biasesDenseVec[i];
