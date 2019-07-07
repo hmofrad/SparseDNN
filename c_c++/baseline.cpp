@@ -23,7 +23,7 @@
 #include "InferenceReLU.cpp"
 
 using WGT = double; 
-Compression_Type CT = Compression_Type::dcsc_fmt;
+Compression_Type CT = Compression_Type::csc_fmt;
 
 int main(int argc, char **argv) {
     printf("INFO: Welcome to Sparse Deep Neural Network Serial Implementation\n");
@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
     printf("Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
     
     start = std::chrono::high_resolution_clock::now();
-    inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat);
+    inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat, CT);
     finish = std::chrono::high_resolution_clock::now();
     WGT challengeRunTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
     WGT challengeRunRate = Nneurons * (DNNedges/challengeRunTime);
