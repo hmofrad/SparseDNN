@@ -10,9 +10,19 @@
 #ifndef SPARSEOPS_CPP
 #define SPARSEOPS_CPP
 
+
 template<typename Weight>
-inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC){
-                         //struct DenseVec<Weight> *spa_DVEC) {
+inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weight> *B,
+                         struct DenseVec<Weight> *x) {
+                             auto *B_CSC = B->csc;
+    uint32_t *IA_B = B_CSC->IA;
+    uint32_t *JA_B = B_CSC->JA;
+    Weight   *A_B  = B_CSC->A;
+    //uint32_t ncols_B = B_CSC->ncols;
+    //uint32_t nrows_B = B_CSC->nrows;                         
+                             
+                             
+                             /*
     uint32_t *IA_A = A_CSC->IA;
     uint32_t *JA_A = A_CSC->JA;
     Weight   *A_A  = A_CSC->A;
@@ -25,7 +35,7 @@ inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC){
     uint32_t ncols_B = B_CSC->ncols;
     uint32_t nrows_B = B_CSC->nrows;
     
-    //auto *A_V = Vec->A;
+    auto *A_V = spa_DVEC->A;
 
     uint64_t nnzmax = 0;
     
@@ -34,76 +44,74 @@ inline uint64_t SpMM_Sym(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC){
         exit(1);
     }
     
-    
-    /*
-    uint32_t i = 0;
-    uint32_t j = 0;
-    
-    uint64_t no = 0;
-    for(uint32_t i = 0; i < nrows_A; i++) {
-        if(rows_A[i]) {
-            for(uint32_t j = 0; j < ncols_B; j++) {
-                no++;
-                if(JA_B[j+1] - JA_B[j]) {
-                    nnzmax++;
-                }
-            }
-        }
-    }
-    */  
-    
-    
-    //uint32_t nrows;
-    
-    
-    struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(nrows_A);
-    auto *A_V = spa_DVEC->A;
-    
     for(uint32_t j = 0; j < ncols_B; j++) {
         for(uint32_t k = JA_B[j]; k < JA_B[j+1]; k++) {
             uint32_t l = IA_B[k];
-            //printf("%d %d %d\n", j, k, l);
-            //Weight t = 0;      
-            //nnzmax += (JA_A[l+1] - JA_A[l]);
-            
-                
-                
-            
             for(uint32_t m = JA_A[l]; m < JA_A[l+1]; m++) {
                 A_V[IA_A[m]] = 1;
-             //   no++;
             }
-
-            
-            //for(uint32_t m = JA_A[l]; m < JA_A[l+1]; m++) {
-              //  if(A_B[k] * A_A[m])
-                        
-            //}
-                //A_V[IA_A[m]] += A_B[k] * A_A[m];
-                
-            //}
-            //printf("t=%f \n", t);
         }
 
         for(uint32_t i = 0; i < nrows_A; i++) {
-           // no++;
-            //auto &v = A_V[i];
             if(A_V[i]) {
                 nnzmax++;
                 A_V[i] = 0;
             }
         }
     }
-    delete spa_DVEC;
     
-   // printf("%lu\n", no);
     return(nnzmax);
+    */
+    return(0);
 }
 
+/*
+template<typename Weight>
+inline uint64_t SpMM_Sym_CSC(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC,
+                         struct DenseVec<Weight> *spa_DVEC) {
+    uint32_t *IA_A = A_CSC->IA;
+    uint32_t *JA_A = A_CSC->JA;
+    Weight   *A_A  = A_CSC->A;
+    uint32_t ncols_A = A_CSC->ncols;
+    uint32_t nrows_A = A_CSC->nrows;
+    
+    uint32_t *IA_B = B_CSC->IA;
+    uint32_t *JA_B = B_CSC->JA;
+    Weight   *A_B  = B_CSC->A;
+    uint32_t ncols_B = B_CSC->ncols;
+    uint32_t nrows_B = B_CSC->nrows;
+    
+    auto *A_V = spa_DVEC->A;
+
+    uint64_t nnzmax = 0;
+    
+    if(ncols_A != nrows_B) {
+        fprintf(stderr, "Error: SpMM dimensions do not agree A[%d %d] B[%d %d]\n", nrows_A, ncols_A, nrows_B, ncols_B);
+        exit(1);
+    }
+    
+    for(uint32_t j = 0; j < ncols_B; j++) {
+        for(uint32_t k = JA_B[j]; k < JA_B[j+1]; k++) {
+            uint32_t l = IA_B[k];
+            for(uint32_t m = JA_A[l]; m < JA_A[l+1]; m++) {
+                A_V[IA_A[m]] = 1;
+            }
+        }
+
+        for(uint32_t i = 0; i < nrows_A; i++) {
+            if(A_V[i]) {
+                nnzmax++;
+                A_V[i] = 0;
+            }
+        }
+    }
+    return(nnzmax);
+}
+*/
 
 
 template<typename Weight>
-inline void SpMM(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct CSC<Weight> *C_CSC,
+inline void SpMM_CSC(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct CSC<Weight> *C_CSC,
                  struct DenseVec<Weight> *spa_DVEC, struct DenseVec<Weight> *x_DVEC) {
     uint32_t *IA_A = A_CSC->IA;
     uint32_t *JA_A = A_CSC->JA;
@@ -145,15 +153,15 @@ inline void SpMM(struct CSC<Weight> *A_CSC, struct CSC<Weight> *B_CSC, struct CS
                 A_V[IA_A[m]] += A_B[k] * A_A[m];
             }
         }
-        //C_CSC->populate_spa(spa_DVEC, j);
-        C_CSC->populate_spa(spa_DVEC, x_DVEC, j);
+        //C_CSC->spapopulate(spa_DVEC, j);
+        C_CSC->spapopulate(spa_DVEC, x_DVEC, j);
     } 
     //delete spa_DVEC;
     
 }
 
 template<typename Weight>
-inline void SpMV_EW(struct CSC<Weight> *A_CSC, struct DenseVec<Weight> *x_DVEC) {
+inline void SpMV_EW_CSC(struct CSC<Weight> *A_CSC, struct DenseVec<Weight> *x_DVEC) {
     Weight YMIN = 0;
     Weight YMAX = 32;
     uint32_t *IA_A = A_CSC->IA;
@@ -182,8 +190,5 @@ inline void SpMV_EW(struct CSC<Weight> *A_CSC, struct DenseVec<Weight> *x_DVEC) 
         }
     }
 }
-
-
-
 
 #endif
