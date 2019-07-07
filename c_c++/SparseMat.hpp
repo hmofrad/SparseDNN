@@ -51,6 +51,26 @@ struct DCSC {
 };
 
 template<typename Weight>
+DCSC<Weight>::DCSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_aligned_) {
+    nrows = nrows_;
+    ncols = ncols_;
+    nnz   = nnz_;
+    nnzcols = 0;
+    IA = nullptr;
+    JA = nullptr;
+    A  = nullptr;
+    //prepopulate(triples);
+    IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned_);
+    //JA_blk = new Data_Block<uint32_t>(&JA, (nnzcols + 1), (nnzcols + 1) * sizeof(uint32_t), page_aligned_);
+    //JC_blk = new Data_Block<uint32_t>(&JC, nnzcols, nnzcols * sizeof(uint32_t), page_aligned_);
+    A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned_);
+    //nbytes = IA_blk->nbytes + JA_blk->nbytes + JC_blk->nbytes + A_blk->nbytes;
+    idx = 0;
+    //JA[0] = 0;
+    //populate(triples);
+}
+
+template<typename Weight>
 DCSC<Weight>::DCSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<struct Triple<Weight>> &triples, bool page_aligned_) {
     nrows = nrows_;
     ncols = ncols_;
