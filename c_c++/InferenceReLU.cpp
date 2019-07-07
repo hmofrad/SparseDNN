@@ -8,7 +8,7 @@
 #define INFERENCERELU_CPP
 
 template<typename Weight>
-void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, std::vector<struct DenseVec<Weight>*> &biasesDenseVec, struct CompressedSpMat<Weight> &featuresSpMat) {    
+void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, std::vector<struct DenseVec<Weight>*> &biasesDenseVec, struct CompressedSpMat<Weight> &featuresSpMat, Compression_Type compression_type) {    
     auto &W1 = layersSpMat;
     auto &B1 = biasesDenseVec;
     auto &Y0 = featuresSpMat;
@@ -18,22 +18,26 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
     struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(Y0.nrows);
     auto *s = spa_DVEC;
     uint64_t nnzmax;
-    for(uint32_t r = 0; r < maxLayers; r++) {
-        auto *W = W1[r];
-        //auto *Y_CSC = Y.csc;
-        auto *B = B1[r];
-        nnzmax = SpMM_Sym<Weight>(Y, W, s);
-        exit(0);
-        //nnzmax = SpMM_Sym<double>(Y_CSC, W_CSC, spa_DVEC);
-        /*
-        ZSpMat = new struct CompressedSpMat<Weight>(Y_CSC->nrows, W_CSC->ncols, nnzmax, Compression_Type::csc_fmt);
-        auto *Z_CSC = ZSpMat->csc;
-        SpMM_CSC<Weight>(Y_CSC, W_CSC, Z_CSC, spa_DVEC, B);
-        Z_CSC->postpopulate();
-        Y_CSC->repopulate(Z_CSC);
-        delete ZSpMat;      
-        printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
-        */
+    if(compression_type == Compression_Type::csc_fmt) {
+        for(uint32_t r = 0; r < maxLayers; r++) {
+            auto *W = W1[r];
+            auto *B = B1[r];
+            nnzmax = SpMM_Sym<Weight>(Y, W, s);
+            auto *Y_CSC = Y.csc;
+            auto *W_CSC = W->csc;
+            ZSpMat = new struct CompressedSpMat<Weight>(Y_CSC->nrows, W_CSC->ncols, nnzmax, compression_type);
+            auto *Z = ZSpMat;
+            SpMM<Weight>(Y, W, Z, B, s);
+            auto *Z_CSC = ZSpMat->csc;
+            Z_CSC->postpopulate();
+            Y_CSC->repopulate(Z_CSC);
+            delete ZSpMat;
+        }
+    }
+    else if(compression_type == Compression_Type::dcsc_fmt) 
+    {
+        ;
+      //  exit(0);
     }
     delete spa_DVEC;
 }
