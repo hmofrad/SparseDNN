@@ -18,19 +18,20 @@ template<typename Weight>
 struct DCSC {
     public:
         DCSC() { nrows = 0, ncols = 0; nnz = 0;  nnzcols = 0; nbytes = 0; idx = 0; IA = nullptr; JA = nullptr; A = nullptr; }
-        DCSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_aligned_ = false);
+        DCSC(uint32_t nrows_, uint32_t ncols_, uint32_t nnzcols_, uint64_t nnz_, bool page_aligned_ = false);
         DCSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<struct Triple<Weight>> &triples, bool page_aligned_ = false);
         ~DCSC();
         inline void prepopulate(std::vector<struct Triple<Weight>> &triples);
         inline void populate(std::vector<struct Triple<Weight>> &triples);
         inline void postpopulate();
         inline void repopulate(struct DCSC<Weight> *other_dcsc);
-        inline void spapopulate(struct DenseVec<Weight> *spa_DVEC, struct DenseVec<Weight> *x_DVEC, uint32_t col_idx);
-        inline void spapopulate(struct DenseVec<Weight> *spa_DVEC, uint32_t col_idx);
+        inline void spapopulate(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, 
+                                uint32_t col_idx, uint32_t nnzcol_idx);
         inline void walk();
         inline uint64_t numnonzeros() const { return(nnz); };
         inline uint32_t numrows()   const { return(nrows); };
         inline uint32_t numcols()   const { return(ncols); };
+        inline uint32_t numnonzerocols()   const { return(nnzcols); };
         inline uint64_t size()        const { return(nbytes); };
         inline void clear();
         
@@ -43,31 +44,37 @@ struct DCSC {
         uint32_t *IA; // Rows
         uint32_t *JA; // Cols
         uint32_t *JC; // Cols Ids
+        uint32_t *JB; // Col bitvector
+        uint32_t *JI; // Col index JC 2 J
         Weight   *A;  // Vals
         struct Data_Block<uint32_t> *IA_blk;
         struct Data_Block<uint32_t> *JA_blk;
         struct Data_Block<uint32_t> *JC_blk;
-        struct Data_Block<Weight>  *A_blk;
+        struct Data_Block<uint32_t> *JB_blk; 
+        struct Data_Block<uint32_t> *JI_blk;
+        struct Data_Block<Weight>   *A_blk;
 };
 
 template<typename Weight>
-DCSC<Weight>::DCSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_aligned_) {
+DCSC<Weight>::DCSC(uint32_t nrows_, uint32_t ncols_, uint32_t nnzcols_, uint64_t nnz_, bool page_aligned_) {
     nrows = nrows_;
     ncols = ncols_;
+    nnzcols = nnzcols_;
     nnz   = nnz_;
-    nnzcols = 0;
     IA = nullptr;
     JA = nullptr;
     A  = nullptr;
-    //prepopulate(triples);
     IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned_);
-    //JA_blk = new Data_Block<uint32_t>(&JA, (nnzcols + 1), (nnzcols + 1) * sizeof(uint32_t), page_aligned_);
-    //JC_blk = new Data_Block<uint32_t>(&JC, nnzcols, nnzcols * sizeof(uint32_t), page_aligned_);
+    JA_blk = new Data_Block<uint32_t>(&JA, (nnzcols + 1), (nnzcols + 1) * sizeof(uint32_t), page_aligned_);
+    JC_blk = new Data_Block<uint32_t>(&JC, nnzcols, nnzcols * sizeof(uint32_t), page_aligned_);
+    JB_blk = new Data_Block<uint32_t>(&JB, ncols, ncols * sizeof(uint32_t), page_aligned_);
+    JI_blk = new Data_Block<uint32_t>(&JI, ncols, ncols * sizeof(uint32_t), page_aligned_);
     A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned_);
-    //nbytes = IA_blk->nbytes + JA_blk->nbytes + JC_blk->nbytes + A_blk->nbytes;
+    nbytes = IA_blk->nbytes + JA_blk->nbytes + JC_blk->nbytes + JB_blk->nbytes + JI_blk->nbytes + A_blk->nbytes;
     idx = 0;
-    //JA[0] = 0;
-    //populate(triples);
+    JA[0] = 0;
+    //printf("nrows=%d ncols=%d nnzcols=%d nnz=%d\n", nrows, ncols, nnzcols, nnz);
+    //exit(0);
 }
 
 template<typename Weight>
@@ -83,8 +90,10 @@ DCSC<Weight>::DCSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<
     IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned_);
     JA_blk = new Data_Block<uint32_t>(&JA, (nnzcols + 1), (nnzcols + 1) * sizeof(uint32_t), page_aligned_);
     JC_blk = new Data_Block<uint32_t>(&JC, nnzcols, nnzcols * sizeof(uint32_t), page_aligned_);
+    JB_blk = new Data_Block<uint32_t>(&JB, ncols, ncols * sizeof(uint32_t), page_aligned_);
+    JI_blk = new Data_Block<uint32_t>(&JI, ncols, ncols * sizeof(uint32_t), page_aligned_);
     A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned_);
-    nbytes = IA_blk->nbytes + JA_blk->nbytes + JC_blk->nbytes + A_blk->nbytes;
+    nbytes = IA_blk->nbytes + JA_blk->nbytes + JC_blk->nbytes + JB_blk->nbytes + JI_blk->nbytes + A_blk->nbytes;
     idx = 0;
     JA[0] = 0;
     populate(triples);
@@ -98,6 +107,10 @@ DCSC<Weight>::~DCSC(){
     JA = nullptr;
     delete JC_blk;
     JC = nullptr;
+    delete JB_blk;
+    JB = nullptr;
+    delete JI_blk;
+    JI = nullptr;
     delete  A_blk;
     A  = nullptr;
 }
@@ -160,24 +173,172 @@ inline void DCSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) 
             A[i] = triple.weight;
             i++;
         }
+        
+        for(j = 0; j < nnzcols; j++) {
+            JB[JC[j]] = 1;
+            JI[JC[j]] = j;
+        }
     }
-    
+    //walk();
+    //for(uint32_t j = 0; j < ncols; j++) {
+      //  printf("%d %d %d\n", j, JB[j], JI[j]);
+   // }
+    //exit(0);
     //walk();
     //nbytes = JC_blk->nbytes;
     
 }
 
+template<typename Weight>
+inline void DCSC<Weight>::spapopulate(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector,
+                                      uint32_t col_idx, uint32_t nnzcol_idx) {
+    Weight YMIN = 0;
+    Weight YMAX = 32;
+    Weight   *x_A = x_vector->A;
+    Weight   *spa_A = spa_vector->A;
+    Weight value = 0;
+    
+    JA[col_idx+1] += JA[col_idx];
+    JC[col_idx] = nnzcol_idx;
+    //printf("1 nr=%d nc=%d nnz=%d nix=%d idx=%d | c=%d ci=%d\n", nrows, ncols, nnz, x_vector->nitems, idx, col_idx, nnzcol_idx);
+    
+    for(uint32_t i = 0; i < nrows; i++) {
+        if(spa_A[i]) {
+            JA[col_idx+1]++;
+            
+            IA[idx] = i;
+            
+            spa_A[i] += x_A[nnzcol_idx];
+            if(spa_A[i] < YMIN) {
+                A[idx] = YMIN;
+            }
+            else if(spa_A[i] > YMAX) {
+                A[idx] = YMAX;
+            }
+            else {
+                A[idx] = spa_A[i];
+            }
+
+            idx++;
+            spa_A[i] = 0;
+        }
+    }
+   
+    
+    
+    //exit(0);
+}
+
+template<typename Weight>
+inline void DCSC<Weight>::postpopulate() {
+    //printf("%d/%d %lu\n", idx, nnz, nbytes);
+    JA_blk->reallocate(&JA, (nnzcols + 1), ((nnzcols + 1) * sizeof(uint32_t)));
+    JC_blk->reallocate(&JC, nnzcols, (nnzcols * sizeof(uint32_t)));
+    nnz = idx;
+    IA_blk->reallocate(&IA, nnz, (nnz * sizeof(uint32_t)));
+    A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
+    nbytes = IA_blk->nbytes + JA_blk->nbytes + JC_blk->nbytes + JB_blk->nbytes + JI_blk->nbytes + A_blk->nbytes;
+    //printf("%d/%d %lu\n", idx, nnz, nbytes);
+    //walk();
+    //exit(0);
+}
+
+
+template<typename Weight>
+inline void DCSC<Weight>::repopulate(struct DCSC<Weight> *other_dcsc){
+    
+    uint32_t o_ncols = other_dcsc->numcols();
+    uint32_t o_nnzcols = other_dcsc->numnonzerocols();
+    uint32_t o_nnz = other_dcsc->numnonzeros();
+    uint32_t *o_IA = other_dcsc->IA;
+    uint32_t *o_JA = other_dcsc->JA;
+    uint32_t *o_JC = other_dcsc->JC;
+    uint32_t *o_JB = other_dcsc->JB;
+    uint32_t *o_JI = other_dcsc->JI;
+    Weight   *o_A  = other_dcsc->A;
+    if(ncols != o_ncols) {
+        fprintf(stderr, "Error: Cannot repopulate DCSC\n");
+        exit(1);
+    }
+    
+    if(nnzcols < o_nnzcols) {
+        JA_blk->reallocate(&JA, (o_nnzcols + 1), ((o_nnzcols + 1) * sizeof(uint32_t)));
+        JC_blk->reallocate(&JC, o_nnzcols, (o_nnzcols * sizeof(uint32_t)));
+    }
+    nnzcols = o_nnzcols;
+    
+    if(nnz < o_nnz) {
+        IA_blk->reallocate(&IA, o_nnz, (o_nnz * sizeof(uint32_t)));
+        A_blk->reallocate(&A, o_nnz, (o_nnz * sizeof(Weight)));
+    }
+    clear();
+    
+    idx = 0;
+    //printf("mynnz=%d othernnz=%d\n", nnzcols, o_nnzcols);
+    uint32_t k = 0;
+    bool present = false;
+    for(uint32_t j = 0; j < o_nnzcols; j++) {
+        present = false;
+        JA[k+1] = JA[k];
+        JC[k] = o_JC[j];
+        JB[JC[k]] = 1;
+        JI[JC[k]] = j;
+        for(uint32_t i = o_JA[j]; i < o_JA[j + 1]; i++) {
+            if(o_A[i]) {
+                JA[k+1]++;
+                IA[idx] = o_IA[i];
+                A[idx]  = o_A[i];
+                idx++;
+                present = true;
+            }
+        }
+        
+        if(present) {
+            k++;
+        }
+        else {
+            JA[k+1] = 0;
+            JB[JC[k]] = 0;
+            JI[JC[k]] = 0;
+            JC[k] = 0;
+            nnzcols--;
+            //printf("%d is empty\n", j);
+            //exit(0);
+        }
+    }
+    //nnzcols = o_nnzcols;
+    postpopulate(); 
+    //printf("#########################\n");
+    walk();
+   
+   //exit(0);
+}
+
+
+template<typename Weight>
+inline void DCSC<Weight>::clear() {
+    IA_blk->clear();
+    JA_blk->clear();
+    JC_blk->clear();
+    JB_blk->clear();
+    JI_blk->clear();
+    A_blk->clear();
+}  
 
 template<typename Weight>
 inline void DCSC<Weight>::walk() {
+    double sum = 0;
     for(uint32_t j = 0; j < nnzcols; j++) {
-        printf("j=%d\n", JC[j]);
+        //printf("j=%d/%d: %d\n", j, JC[j], JA[j + 1] - JA[j]);
         for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
             IA[i];
             A[i];
+            sum += A[i];
             //std::cout << "   i=" << IA[i] << ",j=" << JC[j] <<  ",value=" << A[i] << std::endl;
         }
     }
+    //printf("########################## %lu %lu\n", nnz, t);
+    std::cout << "Checksum=" << sum << std::endl;
 }
 
 
@@ -192,7 +353,7 @@ struct CSC {
         inline void populate(std::vector<struct Triple<Weight>> &triples);
         inline void postpopulate();
         inline void repopulate(struct CSC<Weight> *other_csc);
-        inline void spapopulate(struct DenseVec<Weight> *spa_DVEC, struct DenseVec<Weight> *x_DVEC, uint32_t col_idx);
+        inline void spapopulate(struct DenseVec<Weight> *x_DVEC, struct DenseVec<Weight> *spa_DVEC, uint32_t col_idx);
         inline void spapopulate(struct DenseVec<Weight> *spa_DVEC, uint32_t col_idx);
         inline void walk();
         inline uint64_t numnonzeros() const { return(nnz); };
@@ -301,15 +462,14 @@ inline void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
 }
 
 template<typename Weight>
-inline void CSC<Weight>::spapopulate(struct DenseVec<Weight> *spa_DVEC, struct DenseVec<Weight> *x_DVEC, uint32_t col_idx) {
+inline void CSC<Weight>::spapopulate(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx) {
     Weight YMIN = 0;
     Weight YMAX = 32;
-    Weight   *spa_A = spa_DVEC->A;
-    Weight   *x_A = x_DVEC->A;
+    Weight   *x_A = x_vector->A;
+    Weight   *spa_A = spa_vector->A;
     Weight value = 0;
     JA[col_idx+1] += JA[col_idx];
     for(uint32_t i = 0; i < nrows; i++) {
-        auto &v = spa_A[i];
         if(spa_A[i]) {
             JA[col_idx+1]++;
             IA[idx] = i;
@@ -330,10 +490,10 @@ inline void CSC<Weight>::spapopulate(struct DenseVec<Weight> *spa_DVEC, struct D
 }
 
 template<typename Weight>
-inline void CSC<Weight>::spapopulate(struct DenseVec<Weight> *spa_DVEC, uint32_t col_idx) {
+inline void CSC<Weight>::spapopulate(struct DenseVec<Weight> *spa_vector, uint32_t col_idx) {
     Weight YMIN = 0;
     Weight YMAX = 32;
-    Weight   *spa_A = spa_DVEC->A;
+    Weight   *spa_A = spa_vector->A;
     Weight value = 0;
     JA[col_idx+1] += JA[col_idx];
     for(uint32_t i = 0; i < nrows; i++) {
@@ -385,6 +545,7 @@ inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc){
         }
     }
     postpopulate();   
+    walk();
 }
 
 template<typename Weight>
@@ -396,14 +557,17 @@ inline void CSC<Weight>::clear() {
 
 template<typename Weight>
 inline void CSC<Weight>::walk() {
+    double sum = 0;
     for(uint32_t j = 0; j < ncols; j++) {
-        printf("j=%d\n", j);
+        //printf("j=%d: %d\n", j, JA[j + 1] - JA[j]);
         for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
             IA[i];
             A[i];
-            std::cout << "i=" << IA[i] << ",j=" << j <<  ",value=" << A[i] << std::endl;
+            sum += A[i];
+            //std::cout << "i=" << IA[i] << ",j=" << j <<  ",value=" << A[i] << std::endl;
         }
     }
+    std::cout << "Checksum=" << sum << std::endl;
 }
 
 enum Compression_Type{ 
@@ -416,7 +580,7 @@ template<typename Weight>
 struct CompressedSpMat {
     public: 
         CompressedSpMat() {csc = nullptr;};
-        CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, Compression_Type type_);
+        CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint32_t nnzcols_, uint64_t nnz_, Compression_Type type_);
         CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<struct Triple<Weight>> &triples, Compression_Type type_);
         ~CompressedSpMat();
         enum Compression_Type type;
@@ -428,14 +592,13 @@ struct CompressedSpMat {
 };
 
 template<typename Weight>
-CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, Compression_Type type_) {
+CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint32_t nnzcols_, uint64_t nnz_, Compression_Type type_) {
     type = type_;
     if(type == csc_fmt) {
         csc = new CSC<Weight>(nrows_, ncols_, nnz_, true);
     }
     else if(type == dcsc_fmt) {
-        printf("DCSC\n");
-        exit(0);
+        dcsc = new DCSC<Weight>(nrows_, ncols_, nnzcols_, nnz_, true);
     }
     else {
         fprintf(stderr, "Error: Cannot find requested compression %d\n", type);
