@@ -15,9 +15,11 @@ function Y = inferenceReLUvec(W,bias,Y0);
      % that requires *left* multiplication feature *row* vectors.
      Z = Y*W{i};
      b = bias{i};
+     %b = full(bias{i}(1))
 
      % Apply bias to non-zero entries.
      Y = Z + (double(logical(Z)) .* b);
+     %Y = (Z + b);
      
      % Threshold negative values.
      Y(Y < 0) = 0;
