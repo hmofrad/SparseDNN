@@ -13,9 +13,11 @@
 
 template<typename Weight>
 inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weight> *B,
-                         struct DenseVec<Weight> *x) {    
+                         struct DenseVec<Weight> *s) {    
     uint32_t *A_JA = nullptr;
     uint32_t *A_JC = nullptr;
+    uint32_t *A_JB = nullptr;
+    uint32_t *A_JI = nullptr;
     uint32_t *A_IA = nullptr;
     Weight *A_A = nullptr;
     uint32_t A_ncols = 0;
@@ -24,11 +26,15 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
 
     uint32_t *B_JA = nullptr;
     uint32_t *B_JC = nullptr;
+    uint32_t *B_JB = nullptr;
+    uint32_t *B_JI = nullptr;
     uint32_t *B_IA = nullptr;
     Weight *B_A = nullptr;
     uint32_t B_ncols = 0;
     uint32_t B_nrows = 0; 
     uint32_t B_nnzcols = 0;  
+    
+    
     
     if((A.type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
         auto *A_CT = A.csc;
@@ -51,6 +57,8 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
         auto *A_CT = A.dcsc;
         A_JA = A_CT->JA;
         A_JC = A_CT->JC;
+        A_JB = A_CT->JB;
+        A_JI = A_CT->JI;
         A_IA = A_CT->IA;      
         A_A  = A_CT->A;
         A_ncols = A_CT->ncols;
@@ -59,7 +67,9 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
         
         auto *B_CT = B->dcsc;
         B_JA = B_CT->JA;
-        B_JA = B_CT->JC;
+        B_JC = B_CT->JC;
+        B_JB = B_CT->JB;
+        B_JI = B_CT->JI;
         B_IA = B_CT->IA;      
         B_A  = B_CT->A;
         B_ncols = B_CT->ncols;
@@ -72,34 +82,72 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
         exit(1);        
     }
 
-    auto *A_V = x->A;
-
+    auto *s_A = s->A;
     uint64_t nnzmax = 0;        
-    
-    
-    
     
     if(A_ncols != B_nrows) {
         fprintf(stderr, "Error: SpMM dimensions do not agree A[%d %d] B[%d %d]\n", A_nrows, A_ncols, B_nrows, B_ncols);
         exit(1);
     }
-
-    for(uint32_t j = 0; j < B_nnzcols; j++) {
-        for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
-            uint32_t l = B_IA[k];
-            for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
-                A_V[A_IA[m]] = 1;
+    //printf("A: %d/%d %d, B:%d/%d %d \n", A_ncols, A_nnzcols,  A.dcsc->nnz, B_ncols, B_nnzcols, B->dcsc->nnz);
+    if((A.type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
+        for(uint32_t j = 0; j < B_nnzcols; j++) {
+            for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                uint32_t l = B_IA[k];
+                for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                    s_A[A_IA[m]] = 1;
+                }
             }
-        }
-
-        for(uint32_t i = 0; i < A_nrows; i++) {
-            if(A_V[i]) {
-                nnzmax++;
-                A_V[i] = 0;
+            for(uint32_t i = 0; i < A_nrows; i++) {
+                if(s_A[i]) {
+                    nnzmax++;
+                    s_A[i] = 0;
+                }
             }
         }
     }
-
+    else if((A.type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt)) {
+        
+        for(uint32_t j = 0; j < B_nnzcols; j++) {
+           // printf("j=%d\n",j);
+            for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                
+                if(A_JB[B_IA[k]]) {
+                    uint32_t l = A_JI[B_IA[k]];
+                    //if(l == 0) {
+                      //  printf("%d %d %d %d\n", j, l, B_IA[k], A_JA[l+1] - A_JA[l]);
+                    //}
+                    //printf("xxnnzmax=%d\n",l);
+                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                        //printf("xxnnzmax=%lu %lu\n", m, s->nitems);
+                        //A_IA[m];
+                        /*
+                        if(A_IA[m] > s->nitems){
+                            printf("xxnnzmax=%lu %lu\n", nnzmax, s->nitems);
+                            break;
+                        }
+                        */
+                        s_A[A_IA[m]] = 1;
+                      //;
+                    }
+                    
+                }
+            }
+            for(uint32_t i = 0; i < A_nrows; i++) {
+                if(s_A[i]) {
+                    nnzmax++;
+                    s_A[i] = 0;
+                }
+            }
+        }
+    }
+    
+    
+    
+    printf("nnzmax=%lu %lu\n", nnzmax, s->nitems);
+    //exit(0);
+    
+    
     return(nnzmax);
 }
 
@@ -152,6 +200,8 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
                  struct DenseVec<Weight> *x, struct DenseVec<Weight> *s) {
     uint32_t *A_JA = nullptr;
     uint32_t *A_JC = nullptr;
+    uint32_t *A_JB = nullptr;
+    uint32_t *A_JI = nullptr;
     uint32_t *A_IA = nullptr;
     Weight *A_A = nullptr;
     uint32_t A_ncols = 0;
@@ -160,6 +210,8 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
 
     uint32_t *B_JA = nullptr;
     uint32_t *B_JC = nullptr;
+    uint32_t *B_JB = nullptr;
+    uint32_t *B_JI = nullptr;
     uint32_t *B_IA = nullptr;
     Weight *B_A = nullptr;
     uint32_t B_ncols = 0;
@@ -194,6 +246,8 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
         auto *A_CT = A.dcsc;
         A_JA = A_CT->JA;
         A_JC = A_CT->JC;
+        A_JB = A_CT->JB;
+        A_JI = A_CT->JI;
         A_IA = A_CT->IA;      
         A_A  = A_CT->A;
         A_ncols = A_CT->ncols;
@@ -202,7 +256,9 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
         
         auto *B_CT = B->dcsc;
         B_JA = B_CT->JA;
-        B_JA = B_CT->JC;
+        B_JC = B_CT->JC;
+        B_JB = B_CT->JB;
+        B_JI = B_CT->JI;
         B_IA = B_CT->IA;      
         B_A  = B_CT->A;
         B_ncols = B_CT->ncols;
@@ -241,15 +297,46 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
                     s_A[A_IA[m]] += B_A[k] * A_A[m];
                 }
             }
-            C_CT->spapopulate(s, x, j);
+            C_CT->spapopulate(x, s, j);
         } 
     }
     else if (C->type == Compression_Type::dcsc_fmt) {
         auto *C_CT = C->dcsc;
-        printf("NOT implemented");
-        exit(0);
+        for(uint32_t j = 0; j < B_nnzcols; j++) {
+           // if(j == 61)
+                //printf("j=%d jc=%d sz=%d %d %d\n", j, B_JC[j], B_JA[j+1] - B_JA[j], A_ncols, A_nnzcols);
+            uint32_t ll = 0;
+            for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                if(A_JB[B_IA[k]]) {
+                    uint32_t l = A_JI[B_IA[k]];
+                    //printf("%d == %d\n", B_IA[k], A_JC[l]);
+                    //if(l == 0)
+                      //  printf("AAAAH\n");
+                    //ll++;
+                    //if(l >= A_nnzcols) {
+                        //printf("jb=%d: lb=%d ja=%d\n", j, l, A_AU[l]);
+                        //exit(0);
+                    //}
+                        
+                    //if(j == 61)
+                      //  printf("  l=%d/%d\n", l, ll);
+                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                        //A_A[m];
+                        //B_A[k];
+                        //A_IA[m];
+                        //if(j == 61)
+                        //    printf("%d\n", A_IA[m]);
+                        //if(A_IA[m] >= s->nitems) break;
+                        //s_A[A_IA[m]] = 1;
+                        
+                        s_A[A_IA[m]] += B_A[k] * A_A[m];
+                    }
+                }
+            }
+            C_CT->spapopulate(x, s, j, B_JC[j]);
+        } 
     }
-    
+
 }
 
 
