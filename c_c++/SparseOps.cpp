@@ -1,8 +1,6 @@
 /*
  * SparseOps.cpp: Sparse Matrix operations
  * Sparse Matrix - Sparse Matrix (SpMM)
- * Sparse Matrix - Dense Vector (SpMV)
- * Element-wise Sparse Matrix - Dense Vector (SpMV_EW)
  * (C) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@gmail.com
  */
@@ -248,7 +246,7 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
         } 
     }
 }
-
+/*
 template<typename Weight>
 inline void SpMV_EW_CSC(struct CSC<Weight> *A_CSC, struct DenseVec<Weight> *x_DVEC) {
     Weight YMIN = 0;
@@ -279,5 +277,5 @@ inline void SpMV_EW_CSC(struct CSC<Weight> *A_CSC, struct DenseVec<Weight> *x_DV
         }
     }
 }
-
+*/
 #endif
