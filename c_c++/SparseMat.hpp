@@ -276,19 +276,21 @@ inline void DCSC<Weight>::repopulate(struct DCSC<Weight> *other_dcsc){
     idx = 0;
     //printf("mynnz=%d othernnz=%d\n", nnzcols, o_nnzcols);
     uint32_t k = 0;
+    uint32_t ii = 0;
     bool present = false;
     for(uint32_t j = 0; j < o_nnzcols; j++) {
         present = false;
         JA[k+1] = JA[k];
         JC[k] = o_JC[j];
         JB[JC[k]] = 1;
-        JI[JC[k]] = j;
+        JI[JC[k]] = k;
         for(uint32_t i = o_JA[j]; i < o_JA[j + 1]; i++) {
             if(o_A[i]) {
                 JA[k+1]++;
                 IA[idx] = o_IA[i];
                 A[idx]  = o_A[i];
                 idx++;
+                ii = i;
                 present = true;
             }
         }
@@ -306,10 +308,18 @@ inline void DCSC<Weight>::repopulate(struct DCSC<Weight> *other_dcsc){
             //exit(0);
         }
     }
+   // printf("nnzcols = o_nnzcols; %d %d %f %f\n", nnzcols, o_nnzcols, A[idx-1], o_IA[ii]);
     //nnzcols = o_nnzcols;
     postpopulate(); 
+    
+    //for(uint32_t j = 0; j < 10; j++) {
+    //    printf("%d %d %d\n", j, JB[j], JI[j]);
+  // }
+   
+   //exit(0); 
+    
     //printf("#########################\n");
-    walk();
+    //walk();
    
    //exit(0);
 }
@@ -328,8 +338,9 @@ inline void DCSC<Weight>::clear() {
 template<typename Weight>
 inline void DCSC<Weight>::walk() {
     double sum = 0;
+    /*
     for(uint32_t j = 0; j < nnzcols; j++) {
-        //printf("j=%d/%d: %d\n", j, JC[j], JA[j + 1] - JA[j]);
+        printf("j=%d/%d: %d\n", j, JC[j], JA[j + 1] - JA[j]);
         for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
             IA[i];
             A[i];
@@ -337,8 +348,23 @@ inline void DCSC<Weight>::walk() {
             //std::cout << "   i=" << IA[i] << ",j=" << JC[j] <<  ",value=" << A[i] << std::endl;
         }
     }
-    //printf("########################## %lu %lu\n", nnz, t);
-    std::cout << "Checksum=" << sum << std::endl;
+    */
+    for(uint32_t j = 0; j < ncols; j++) {
+        if(JB[j]) {
+        //printf("%d %d %f\n", j, JA[JI[j] + 1] - JA[JI[j]] ,sum);
+        for(uint32_t i = JA[JI[j]]; i < JA[JI[j] + 1]; i++) {
+            IA[i];
+            A[i];
+            sum += A[i];
+            //std::cout << "   i=" << IA[i] << ",j=" << JC[j] <<  ",value=" << A[i] << std::endl;
+        }
+        }
+        //else 
+          //  printf("%d %d %f\n", j, 0, sum);
+    }
+    
+    printf("Checksum=%f\n", sum);
+    //std::cout << "Checksum=" << sum << std::endl;
 }
 
 
@@ -454,11 +480,13 @@ inline void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
             A[i] = triple.weight;
             i++;
         }
-        while((j + 1) < ncols) {
+        while((j + 1) <= ncols) {
             j++;
             JA[j] = JA[j - 1];
         }
     }
+        //walk();
+        //exit(0);
 }
 
 template<typename Weight>
@@ -545,7 +573,6 @@ inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc){
         }
     }
     postpopulate();   
-    walk();
 }
 
 template<typename Weight>
@@ -559,6 +586,7 @@ template<typename Weight>
 inline void CSC<Weight>::walk() {
     double sum = 0;
     for(uint32_t j = 0; j < ncols; j++) {
+        //printf("%d %d %f\n", j, JA[j + 1] - JA[j], sum);
         //printf("j=%d: %d\n", j, JA[j + 1] - JA[j]);
         for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
             IA[i];
@@ -567,7 +595,8 @@ inline void CSC<Weight>::walk() {
             //std::cout << "i=" << IA[i] << ",j=" << j <<  ",value=" << A[i] << std::endl;
         }
     }
-    std::cout << "Checksum=" << sum << std::endl;
+    printf("Checksum=%f\n", sum);
+    //std::cout << "Checksum=" << sum << std::endl;
 }
 
 enum Compression_Type{ 
