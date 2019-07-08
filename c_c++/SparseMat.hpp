@@ -13,6 +13,7 @@
 
 #include "Allocator.hpp"
 #include "Triple.hpp"
+#include "Env.hpp"
 
 template<typename Weight>
 struct DCSC {
@@ -24,9 +25,12 @@ struct DCSC {
         inline void prepopulate(std::vector<struct Triple<Weight>> &triples);
         inline void populate(std::vector<struct Triple<Weight>> &triples);
         inline void postpopulate();
+        inline void postpopulate_t();
         inline void repopulate(struct DCSC<Weight> *other_dcsc);
         inline void spapopulate(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, 
                                 uint32_t col_idx, uint32_t nnzcol_idx);
+        inline void spapopulate_t(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, 
+                                uint32_t col_idx, uint32_t nnzcol_idx, int tid);                                
         inline void walk();
         inline uint64_t numnonzeros() const { return(nnz); };
         inline uint32_t numrows()   const { return(nrows); };
@@ -201,13 +205,64 @@ inline void DCSC<Weight>::spapopulate(struct DenseVec<Weight> *x_vector, struct 
 }
 
 template<typename Weight>
+inline void DCSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector,
+                                      uint32_t col_idx, uint32_t nnzcol_idx, int tid) {
+    Weight YMIN = 0;
+    Weight YMAX = 32;
+    Weight *x_A = x_vector->A;
+    Weight *spa_A = spa_vector->A;
+    Weight value = 0;
+    auto &idx = Env::offset[tid];
+    //JA[col_idx+1] += JA[col_idx];
+    JC[col_idx] = nnzcol_idx;
+    
+    for(uint32_t i = 0; i < nrows; i++) {
+        if(spa_A[i]) {
+            JA[col_idx+1]++;
+            IA[idx] = i;
+            spa_A[i] += x_A[nnzcol_idx];
+            if(spa_A[i] < YMIN) {
+                A[idx] = YMIN;
+            }
+            else if(spa_A[i] > YMAX) {
+                A[idx] = YMAX;
+            }
+            else {
+                A[idx] = spa_A[i];
+            }
+            idx++;
+            spa_A[i] = 0;
+        }
+    }
+}
+
+template<typename Weight>
 inline void DCSC<Weight>::postpopulate() {
     JA_blk->reallocate(&JA, (nnzcols + 1), ((nnzcols + 1) * sizeof(uint32_t)));
     JC_blk->reallocate(&JC, nnzcols, (nnzcols * sizeof(uint32_t)));
     nnz = idx;
     IA_blk->reallocate(&IA, nnz, (nnz * sizeof(uint32_t)));
     A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
-    nbytes = IA_blk->nbytes + JA_blk->nbytes + JC_blk->nbytes + JB_blk->nbytes + JI_blk->nbytes + A_blk->nbytes;
+    nbytes = JA_blk->nbytes + JC_blk->nbytes + JB_blk->nbytes + JI_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
+}
+
+template<typename Weight>
+inline void DCSC<Weight>::postpopulate_t() {
+    
+    JA[0] = 0;
+    for(uint32_t j = 1; j < nnzcols + 1; j++) {
+        JA[j] += JA[j-1];
+      //  printf("%d %d\n", j ,JA[j]);
+    }
+    //exit(0);
+    nnz = Env::offset[Env::nthreads-1];
+    
+    
+    JA_blk->reallocate(&JA, (nnzcols + 1), ((nnzcols + 1) * sizeof(uint32_t)));
+    JC_blk->reallocate(&JC, nnzcols, (nnzcols * sizeof(uint32_t)));
+    IA_blk->reallocate(&IA, nnz, (nnz * sizeof(uint32_t)));
+    A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
+    nbytes = JA_blk->nbytes + JC_blk->nbytes + JB_blk->nbytes + JI_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
 }
 
 
@@ -287,9 +342,17 @@ template<typename Weight>
 inline void DCSC<Weight>::walk() {
     double sum = 0;
     uint64_t k = 0;
-    
+    for(uint32_t j = 0; j < ncols; j++) {
+        if(JB[j]) {
+            printf("%d %d\n", j, JA[JI[j] + 1] - JA[JI[j]]);
+        }
+        else {
+            printf("%d %d\n", j, 0);
+        }
+    }
+    /*
     for(uint32_t j = 0; j < nnzcols; j++) {
-        printf("j=%d/%d,  sz=%d\n", j, JC[j], JA[j + 1] - JA[j]);
+      //  printf("j=%d/%d,  sz=%d\n", j, JC[j], JA[j + 1] - JA[j]);
         for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
             IA[i];
             A[i];
@@ -298,7 +361,8 @@ inline void DCSC<Weight>::walk() {
             //std::cout << "   i=" << IA[i] << ",j=" << JC[j] <<  ",value=" << A[i] << std::endl;
         }
     }
-    printf("Checksum=%f, Count=%d\n", sum, k);
+    */
+    printf("Checksum=%f, Count=%lu\n", sum, k);
 }
 
 
@@ -312,9 +376,11 @@ struct CSC {
         inline void prepopulate(std::vector<struct Triple<Weight>> &triples);
         inline void populate(std::vector<struct Triple<Weight>> &triples);
         inline void postpopulate();
+        inline void postpopulate_t();
         inline void repopulate(struct CSC<Weight> *other_csc);
-        inline void spapopulate(struct DenseVec<Weight> *x_DVEC, struct DenseVec<Weight> *spa_DVEC, uint32_t col_idx);
-        inline void spapopulate(struct DenseVec<Weight> *spa_DVEC, uint32_t col_idx);
+        inline void spapopulate(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx);
+        inline void spapopulate(struct DenseVec<Weight> *spa_vector, uint32_t col_idx);
+        inline void spapopulate_t(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx, int tid);
         inline void walk();
         inline uint64_t numnonzeros() const { return(nnz); };
         inline uint32_t numrows()   const { return(nrows); };
@@ -467,13 +533,60 @@ inline void CSC<Weight>::spapopulate(struct DenseVec<Weight> *spa_vector, uint32
     }
 }
 
+template<typename Weight>
+inline void CSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx, int tid) {
+    Weight YMIN = 0;
+    Weight YMAX = 32;
+    Weight   *x_A = x_vector->A;
+    Weight   *spa_A = spa_vector->A;
+    Weight value = 0;
+    auto &idx = Env::offset[tid];
+    //JA[col_idx+1] += JA[col_idx];
+    for(uint32_t i = 0; i < nrows; i++) {
+        if(spa_A[i]) {
+            JA[col_idx+1]++;
+            IA[idx] = i;
+            spa_A[i] += x_A[col_idx];
+            if(spa_A[i] < YMIN) {
+                A[idx] = YMIN;
+            }
+            else if(spa_A[i] > YMAX) {
+                A[idx] = YMAX;
+            }
+            else {
+                A[idx] = spa_A[i];
+            }
+            idx++;
+            spa_A[i] = 0;
+        }
+    }
+}
+
 
 template<typename Weight>
 inline void CSC<Weight>::postpopulate() {
     nnz = idx;
-    JA_blk->reallocate(&JA, nnz, (nnz * sizeof(uint32_t)));
+    JA_blk->reallocate(&JA, (ncols + 1), ((ncols + 1) * sizeof(uint32_t)));
+    IA_blk->reallocate(&IA, nnz, (nnz * sizeof(Weight)));
     A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
-    nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
+    nbytes = JA_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
+}
+
+template<typename Weight>
+inline void CSC<Weight>::postpopulate_t() {
+    //JA[col_idx+1] += JA[col_idx];
+    JA[0] = 0;
+    for(uint32_t j = 1; j < ncols+1; j++) {
+        JA[j] += JA[j-1];
+      //  printf("%d %d\n", j ,JA[j]);
+    }
+    //exit(0);
+    nnz = Env::offset[Env::nthreads-1];
+    //printf("nnz=%lu\n", nnz);
+    JA_blk->reallocate(&JA, (ncols + 1), ((ncols + 1) * sizeof(uint32_t)));
+    IA_blk->reallocate(&IA, nnz, (nnz * sizeof(Weight)));
+    A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
+    nbytes = JA_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
 }
 
 template<typename Weight>
@@ -519,7 +632,8 @@ inline void CSC<Weight>::walk() {
     double sum = 0;
     uint64_t k = 0;
     for(uint32_t j = 0; j < ncols; j++) {
-        printf("j=%d, sz=%d\n", j, JA[j + 1] - JA[j]);
+        printf("%d %d\n", j, JA[j + 1] - JA[j]);
+        //printf("j=%d, sz=%d\n", j, JA[j + 1] - JA[j]);
         for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
             IA[i];
             A[i];
@@ -528,7 +642,7 @@ inline void CSC<Weight>::walk() {
             //std::cout << "i=" << IA[i] << ",j=" << j <<  ",value=" << A[i] << std::endl;
         }
     }
-    printf("Checksum=%f, Count=%d\n", sum, k);
+    printf("Checksum=%f, Count=%lu\n", sum, k);
 }
 
 enum Compression_Type{ 
