@@ -70,8 +70,6 @@ int main(int argc, char **argv) {
     printf("INFO: Done  reading the features file %s\n", featuresFile.c_str());
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrowsFeatures, ncolsFeatures, featuresTriples.size());
     
-    
-    //struct CompressedSpMat<WGT> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, Compression_Type::csr_only);
     struct CompressedSpMat<WGT> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
@@ -111,14 +109,9 @@ int main(int argc, char **argv) {
     std::vector<struct Triple<WGT>> layerTriples;
     struct Triple<WGT> layerTriple;  
     std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
-    
-    //std::vector<struct Triple<WGT>> biasTriples;
-    //struct Triple<WGT> biasTriple;  
-    //std::vector<struct CompressedSpMat<WGT>*> biasesSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
 
     printf("INFO: Start reading %d layer files\n", maxLayers);
-    //maxLayers = num;
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
         std::string layerFile = ((std::string) argv[6]) + "/neuron" + std::to_string(Nneurons) + "/n" + std::to_string(Nneurons) + "-l" + std::to_string(i+1) + ".tsv";
@@ -137,7 +130,6 @@ int main(int argc, char **argv) {
             iss.clear();
             iss.str(line);
             iss >> layerTriple.row >> layerTriple.col >> layerTriple.weight;
-            //iss >> layerTriple.col >> layerTriple.row >> layerTriple.weight;
             layerTriples.push_back(layerTriple);
             if(layerTriple.row > nrows)
                 nrows = layerTriple.row;
@@ -148,16 +140,12 @@ int main(int argc, char **argv) {
         DNNedges += layerTriples.size();
 
         struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, CT);
-        //struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, Compression_Type::csc_only, &featuresSpMat.csr->rowncols);
-        //struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (Nneurons + 1), layerTriples.size(), layerTriples, Compression_Type::csr_only);
         layersSpMat.push_back(layerSpMat);
         layerTriples.clear();
         layerTriples.shrink_to_fit();
         
-        //struct DenseVec<WGT> *biaseDenseVec = new struct DenseVec<WGT>((ncolsFeatures + 1));
         struct DenseVec<WGT> *biaseDenseVec = new struct DenseVec<WGT>((Nneurons + 1));
         auto &bias_A = biaseDenseVec->A;
-        //for(uint32_t j = 1; j < ncolsFeatures+1; j++) {
         for(uint32_t j = 1; j < Nneurons+1; j++) {
             bias_A[j] = biasValue;
         }
@@ -165,13 +153,7 @@ int main(int argc, char **argv) {
         biasesDenseVec.push_back(biaseDenseVec);
 
     } 
-    
-    /*
-    struct CompressedSpMat<WGT> featuresSpMat((Nneurons + 1),(ncolsFeatures + 1), featuresTriples.size(), featuresTriples, Compression_Type::csc_only, &layersSpMat[0]->csr->rowncols);
-    featuresTriples.clear();
-    featuresTriples.shrink_to_fit();
-    */
-    
+
     auto finish = std::chrono::high_resolution_clock::now();
     printf("INFO: Done  reading %d layer files\n", maxLayers);
     WGT readLayerTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
@@ -187,83 +169,7 @@ int main(int argc, char **argv) {
     printf("Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
     
     validate_prediction<WGT>(featuresSpMat, trueCategories, CT);
-    /*
-    std::vector<int32_t> predictedCategories;
-    auto &Y = featuresSpMat;
-    auto *Y_CSR = Y.csr;
-    for(uint32_t i = 0; i < Y_CSR->nrows; i++) {
-        WGT s = 0;
-        for(uint32_t j = Y_CSR->IA[i]; j < Y_CSR->IA[i+1]; j++) {
-            s += Y_CSR->A[j];
-        }
-        if( s > 0) {
-            predictedCategories.push_back(i);
-        }
-    }
-    */
-    
-    /*
-    std::vector<int32_t> predictedCategories;
-    auto &Y = featuresSpMat;
-    auto *Y_CSC = Y.csc;
-    for(uint32_t j = 0; j < Y_CSC->ncols; j++) {
-        WGT s = 0;
-        for(uint32_t i = Y_CSC->JA[j]; i < Y_CSC->JA[j+1]; i++) {
-            s += Y_CSC->A[i];
-        }
-        if( s > 0) {
-            predictedCategories.push_back(j);
-        }
-    }
-    */
-    
  
-    /*
-    std::vector<WGT> allCategories(nrowsFeatures + 1);
-    
-    auto &Y = featuresSpMat;
-    auto *Y_CSC = Y.csc;
-    for(uint32_t j = 0; j < Y_CSC->ncols; j++) {
-        WGT s = 0;
-        for(uint32_t i = Y_CSC->JA[j]; i < Y_CSC->JA[j+1]; i++) {
-            allCategories[Y_CSC->IA[i]] += Y_CSC->A[i];
-        }
-    }
-    
-    std::vector<int32_t> predictedCategories;
-    for(uint32_t i = 0; i < nrowsFeatures + 1; i++) {
-        //printf("%d %f\n", i, allCategories[i]);
-        if(allCategories[i])
-            predictedCategories.push_back(i);
-    }
-    //printf("%d %d %d\n", allCategories.size(), predictedCategories.size(), Ncategories);
-    bool tf = true;
-    if(Ncategories == predictedCategories.size()) {
-        
-        for(int32_t i = 0; i < Ncategories; i++) {
-      //      printf("%d %d\n", trueCategories[i], predictedCategories[i]);
-            if(predictedCategories[i] != trueCategories[i]) {
-                tf = false;
-                break;
-            }
-        }
-    } 
-    else {
-        tf = false;
-    }
-    
-    if(tf) {
-        printf("Challenge PASSED\n");
-    }
-    else {
-        printf("Challenge FAILED\n");
-    }
-    */
-
-
-
- 
-
     for(uint32_t i = 0; i < maxLayers; i++) {  
         delete layersSpMat[i];
         delete biasesDenseVec[i];
