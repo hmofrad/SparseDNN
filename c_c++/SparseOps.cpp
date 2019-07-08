@@ -89,11 +89,20 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
         fprintf(stderr, "Error: SpMM dimensions do not agree A[%d %d] B[%d %d]\n", A_nrows, A_ncols, B_nrows, B_ncols);
         exit(1);
     }
+    //bool tf = false;
+    //if(r == 1) tf = false;
+    
     //printf("A: %d/%d %d, B:%d/%d %d \n", A_ncols, A_nnzcols,  A.dcsc->nnz, B_ncols, B_nnzcols, B->dcsc->nnz);
     if((A.type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
+        //if(tf)
+        //printf("%d %d\n", B_nnzcols, A_nnzcols);
         for(uint32_t j = 0; j < B_nnzcols; j++) {
+          //  if(tf)
+            //printf("  j=%d sz = %d\n",j, B_JA[j+1] - B_JA[j]);
             for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
                 uint32_t l = B_IA[k];
+              //  if(tf)
+                //printf("    j=%d l=%d sz = %d idx=%d\n",j, l, A_JA[l+1]-A_JA[l], A_JA[l+1]);
                 for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
                     s_A[A_IA[m]] = 1;
                 }
@@ -104,16 +113,41 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
                     s_A[i] = 0;
                 }
             }
+            //if(tf) {
+            //if(j == 1)
+                //exit(0);
+            //}
         }
     }
     else if((A.type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt)) {
+        /*
+        if(tf) {
+            for(uint32_t j = 0; j < 1; j++) {
+                for(uint32_t k = A_JA[j]; k < A_JA[j+1]; k++) {
+                    printf("j=%d/%d i=%d/%d v=%f\n", j, A_JC[j], k, A_IA[k], A_A[k]);
+                }
+            }
+        }
+        */
         
+        //if(tf)
+          //printf("%d %d\n", B_nnzcols, A_nnzcols);
         for(uint32_t j = 0; j < B_nnzcols; j++) {
-           // printf("j=%d\n",j);
+            //if(tf)
+            //printf("  j=%d/%d sz = %d\n",j, B_JC[j], B_JA[j+1] - B_JA[j]);
             for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
                 
                 if(A_JB[B_IA[k]]) {
+                    //if(tf) {
+                      //  printf("%d %d %d\n", B_IA[k], A_JB[B_IA[k]], A_JI[B_IA[k]]);
+                       // exit(0);
+                        
+                    //}
+                    
+                    
                     uint32_t l = A_JI[B_IA[k]];
+                    //if(tf)
+                    //printf("    j=%d/%d i=%d/%d (%d b=%d i=%d %d)  l=%d sz = %d idx=%d\n",j, B_JC[j], B_IA[k], l, A_JB[B_IA[k]], A_JI[B_IA[k]], A_JC[A_JI[B_IA[k]]], l, A_JA[l+1]-A_JA[l], A_JA[l+1]);
                     //if(l == 0) {
                       //  printf("%d %d %d %d\n", j, l, B_IA[k], A_JA[l+1] - A_JA[l]);
                     //}
@@ -139,6 +173,10 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
                     s_A[i] = 0;
                 }
             }
+            //if(tf) {
+            //if(B_JC[j] == 1)
+              //  exit(0);
+            //}
         }
     }
     
