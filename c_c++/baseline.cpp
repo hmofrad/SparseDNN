@@ -16,14 +16,17 @@
 #include <set>
 #include <chrono>
 
+#include <omp.h>
+
 #include "Triple.hpp"
 #include "DenseVec.hpp"
 #include "SparseMat.hpp"
 #include "SparseOps.cpp"
 #include "InferenceReLU.cpp"
+#include "Env.hpp"
 
 using WGT = double; 
-Compression_Type CT = Compression_Type::dcsc_fmt;
+Compression_Type CT = Compression_Type::csc_fmt;
 int main(int argc, char **argv) {
     printf("INFO: Welcome to Sparse Deep Neural Network Serial Implementation\n");
     
@@ -110,7 +113,7 @@ int main(int argc, char **argv) {
     struct Triple<WGT> layerTriple;  
     std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
-
+    maxLayers = 3;
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
@@ -160,6 +163,8 @@ int main(int argc, char **argv) {
     WGT readLayerRate = (WGT) DNNedges/readLayerTime;
     printf("DNN neurons/layer: %d, layers:%d, edges:%lu\n", Nneurons, maxLayers, DNNedges);
     printf("Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
+    
+    Env::init();
     
     start = std::chrono::high_resolution_clock::now();
     inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat, CT);
