@@ -1,6 +1,7 @@
 /*
  * SparseMat.hpp: Sparse Matrix formats
  * Compressed Sparse Column (CSC)
+ * Doubly Compressed Sparse Column (DCSC)
  * (C) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@gmail.com
  */
