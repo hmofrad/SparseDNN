@@ -8,9 +8,12 @@
 #ifndef SPARSEOPS_CPP
 #define SPARSEOPS_CPP
 
+#include "Env.hpp"
+
 template<typename Weight>
 inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weight> *B,
-                         struct DenseVec<Weight> *s) {    
+                        std::vector<struct DenseVec<Weight> *> &s) {    
+                        // struct DenseVec<Weight> *s) {    
     uint32_t *A_JA = nullptr;
     uint32_t *A_JC = nullptr;
     uint32_t *A_JB = nullptr;
@@ -30,8 +33,6 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
     uint32_t B_ncols = 0;
     uint32_t B_nrows = 0; 
     uint32_t B_nnzcols = 0;  
-    
-    
     
     if((A.type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
         auto *A_CT = A.csc;
@@ -79,21 +80,101 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
         exit(1);        
     }
 
-    auto *s_A = s->A;
+    auto *s_A = A_JC;
+    //auto *s_A = s->A;
     uint64_t nnzmax = 0;        
-    int num = 0;
     if(A_ncols != B_nrows) {
         fprintf(stderr, "Error: SpMM dimensions do not agree A[%d %d] B[%d %d]\n", A_nrows, A_ncols, B_nrows, B_ncols);
         exit(1);
     }
-
+    
+    #pragma omp parallel reduction(+:nnzmax)
+    {
+        long nthreads = omp_get_num_threads();
+        int tid = omp_get_thread_num();
+        uint32_t length = B_nnzcols;
+        uint32_t chunk = length/nthreads;
+        uint32_t start = chunk * tid;
+        uint32_t end = start + chunk;
+        end = (tid == nthreads - 1) ? length : end;
+        //printf("tid=%d / %lu [%d %d]\n", tid, nthreads, start, end );
+        uint64_t nnzmax_local = 0;
+        auto *s_A = s[tid]->A;
+        
+        if((A.type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
+            for(uint32_t j = start; j < end; j++) {
+                for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                    uint32_t l = B_IA[k];
+                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                        s_A[A_IA[m]] = 1;
+                    }
+                }
+                for(uint32_t i = 0; i < A_nrows; i++) {
+                    if(s_A[i]) {
+                        nnzmax_local++;
+                        s_A[i] = 0;
+                    }
+                }
+            }
+        }
+        else if((A.type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt)) {
+            for(uint32_t j = start; j < end; j++) {
+                for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                    if(A_JB[B_IA[k]]) {
+                        uint32_t l = A_JI[B_IA[k]];
+                        for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                            s_A[A_IA[m]] = 1;
+                        }
+                    }
+                }
+                for(uint32_t i = 0; i < A_nrows; i++) {
+                    if(s_A[i]) {
+                        nnzmax_local++;
+                        s_A[i] = 0;
+                    }
+                }
+            }
+        }
+        nnzmax += nnzmax_local;
+        Env::start[tid] = start;
+        Env::end[tid] = end;
+        Env::length[tid] = nnzmax_local;
+    }
+    
+    Env::env_set_offset();
+    /*
+    if((A.type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt)) {
+        struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(A_nrows);
+        auto *s_A = spa_DVEC->A;
+        for(uint32_t j = 0; j < B_nnzcols; j++) {
+            for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                if(A_JB[B_IA[k]]) {
+                    uint32_t l = A_JI[B_IA[k]];
+                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                        s_A[A_IA[m]] = 1;
+                    }
+                }
+            }
+            for(uint32_t i = 0; i < A_nrows; i++) {
+                if(s_A[i]) {
+                    nnzmax++;
+                    s_A[i] = 0;
+                }
+            }
+        }
+        delete spa_DVEC;
+    }
+    */
+    
+    //printf("%lu\n", nnzmax);
+    //exit(0);
+    /*
     if((A.type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
         for(uint32_t j = 0; j < B_nnzcols; j++) {
             for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
                 uint32_t l = B_IA[k];
                 for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
                     s_A[A_IA[m]] = 1;
-                    num++;
                 }
             }
             for(uint32_t i = 0; i < A_nrows; i++) {
@@ -111,7 +192,6 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
                     uint32_t l = A_JI[B_IA[k]];
                     for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
                         s_A[A_IA[m]] = 1;
-                        num++;
                     }
                 }
             }
@@ -123,12 +203,16 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
             }
         }
     }
+    */
+    //printf("nnzmax=%lu\n", nnzmax);
+    //exit(0);
     return(nnzmax);
 }
 
 template<typename Weight>
 inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weight> *B, struct CompressedSpMat<Weight> *C,
-                 struct DenseVec<Weight> *x, struct DenseVec<Weight> *s) {
+                 struct DenseVec<Weight> *x, std::vector<struct DenseVec<Weight> *> &s) {  
+                 //struct DenseVec<Weight> *s) {
     uint32_t *A_JA = nullptr;
     uint32_t *A_JC = nullptr;
     uint32_t *A_JB = nullptr;
@@ -207,7 +291,7 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
     }
  
     uint32_t x_nitems = x->nitems;
-    auto *s_A = s->A;    
+    //auto *s_A = s->A;    
     
     if((A_ncols != B_nrows) or (A_nrows != C_nrows) or (B_ncols != C_ncols)) {
         fprintf(stderr, "Error: SpMM dimensions do not agree C[%d %d] != A[%d %d] B[%d %d]\n", C_nrows, C_ncols, A_nrows, A_ncols, B_nrows, B_ncols);
@@ -219,6 +303,77 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
         exit(1);
     }
     
+    #pragma omp parallel
+    {
+        int tid = omp_get_thread_num();
+        uint32_t start = Env::start[tid];
+        uint32_t end = Env::end[tid];
+        //end = (tid == nthreads - 1) ? length : end;
+        //printf("tid=%d / %lu [%d %d] %d\n", tid, nthreads, begin, end, Env::offset[tid]);
+        //uint64_t nnzmax_local = 0;
+        auto *s_A = s[tid]->A;
+        
+        if(C->type == Compression_Type::csc_fmt) {
+            auto *C_CT = C->csc;
+            for(uint32_t j = start; j < end; j++) {
+                for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                    uint32_t l = B_IA[k];
+                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                        s_A[A_IA[m]] += B_A[k] * A_A[m];
+                    }
+                }
+                C_CT->spapopulate_t(x, s[tid], j, tid);
+            }
+            //printf("%d %lu\n", tid, Env::offset[tid]);
+        }
+        else if (C->type == Compression_Type::dcsc_fmt) {
+            
+            auto *C_CT = C->dcsc;
+            for(uint32_t j = start; j < end; j++) {
+                for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                    if(A_JB[B_IA[k]]) {
+                        uint32_t l = A_JI[B_IA[k]];
+                        for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                            s_A[A_IA[m]] += B_A[k] * A_A[m];
+                        }
+                    }
+                }
+                C_CT->spapopulate_t(x, s[tid], j, B_JC[j], tid);
+            } 
+        }
+        
+    }
+    if(C->type == Compression_Type::csc_fmt) {
+        auto *C_CT = C->csc;
+        C_CT->postpopulate_t();
+    }
+    else if(C->type == Compression_Type::dcsc_fmt) {
+        auto *C_CT = C->dcsc;
+        C_CT->postpopulate_t();
+        /*
+        struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(A_nrows);
+        auto *s_A = spa_DVEC->A;
+        auto *C_CT = C->dcsc;
+        for(uint32_t j = 0; j < B_nnzcols; j++) {
+            for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                if(A_JB[B_IA[k]]) {
+                    uint32_t l = A_JI[B_IA[k]];
+                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                        s_A[A_IA[m]] += B_A[k] * A_A[m];
+                    }
+                }
+            }
+            C_CT->spapopulate(x, spa_DVEC, j, B_JC[j]);
+        } 
+        delete spa_DVEC;
+        */
+    }
+    
+    //printf("DONE with %d\n", Env::nthreads);
+    //exit(0);
+    
+    //printf("??? %d\n", Env::nthreads);
+    /*
     if(C->type == Compression_Type::csc_fmt) {
         auto *C_CT = C->csc;
         for(uint32_t j = 0; j < B_nnzcols; j++) {
@@ -245,6 +400,9 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
             C_CT->spapopulate(x, s, j, B_JC[j]);
         } 
     }
+    */
+    //printf("DONE\n");
+    //exit(0);
 }
 /*
 template<typename Weight>
