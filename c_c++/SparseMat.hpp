@@ -251,12 +251,14 @@ inline void DCSC<Weight>::postpopulate_t() {
     for(uint32_t j = 1; j < nnzcols + 1; j++) {
         JA[j] += JA[j-1];
     }
+    /*
     nnz = Env::offset[Env::nthreads-1];
     JA_blk->reallocate(&JA, (nnzcols + 1), ((nnzcols + 1) * sizeof(uint32_t)));
     JC_blk->reallocate(&JC, nnzcols, (nnzcols * sizeof(uint32_t)));
     IA_blk->reallocate(&IA, nnz, (nnz * sizeof(uint32_t)));
     A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
     nbytes = JA_blk->nbytes + JC_blk->nbytes + JB_blk->nbytes + JI_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
+    */
 }
 
 
