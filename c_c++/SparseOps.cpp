@@ -11,7 +11,7 @@
 #include "Env.hpp"
 
 template<typename Weight>
-inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weight> *B,
+inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weight> *B,
                         std::vector<struct DenseVec<Weight> *> &s) {    
                         // struct DenseVec<Weight> *s) {    
     uint32_t *A_JA = nullptr;
@@ -34,8 +34,8 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
     uint32_t B_nrows = 0; 
     uint32_t B_nnzcols = 0;  
     
-    if((A.type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
-        auto *A_CT = A.csc;
+    if((A->type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
+        auto *A_CT = A->csc;
         A_JA = A_CT->JA;
         A_IA = A_CT->IA;      
         A_A  = A_CT->A;
@@ -51,8 +51,8 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
         B_nrows = B_CT->nrows;  
         B_nnzcols = B_ncols;
     }
-    else if((A.type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt)) {
-        auto *A_CT = A.dcsc;
+    else if((A->type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt)) {
+        auto *A_CT = A->dcsc;
         A_JA = A_CT->JA;
         A_JC = A_CT->JC;
         A_JB = A_CT->JB;
@@ -98,7 +98,7 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
         uint64_t nnzmax_local = 0;
         auto *s_A = s[tid]->A;
         
-        if((A.type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
+        if((A->type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
             for(uint32_t j = start; j < end; j++) {
                 for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
                     uint32_t l = B_IA[k];
@@ -114,7 +114,7 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
                 }
             }
         }
-        else if((A.type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt)) {
+        else if((A->type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt)) {
             for(uint32_t j = start; j < end; j++) {
                 for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
                     if(A_JB[B_IA[k]]) {
@@ -142,7 +142,7 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> &A, struct CompressedSpM
 }
 
 template<typename Weight>
-inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weight> *B, struct CompressedSpMat<Weight> *C,
+inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weight> *B, struct CompressedSpMat<Weight> *C,
                  struct DenseVec<Weight> *x, std::vector<struct DenseVec<Weight> *> &s) {  
                  //struct DenseVec<Weight> *s) {
     uint32_t *A_JA = nullptr;
@@ -168,8 +168,8 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
     uint32_t C_nrows = 0;
     uint32_t C_ncols = 0;   
     
-    if((A.type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt) and (C->type == Compression_Type::csc_fmt)) {
-        auto *A_CT = A.csc;
+    if((A->type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt) and (C->type == Compression_Type::csc_fmt)) {
+        auto *A_CT = A->csc;
         A_JA = A_CT->JA;
         A_IA = A_CT->IA;      
         A_A  = A_CT->A;
@@ -189,8 +189,8 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
         C_nrows = C_CT->nrows;
         C_ncols = C_CT->ncols;   
     }
-    else if((A.type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt) and (C->type == Compression_Type::dcsc_fmt)) {
-        auto *A_CT = A.dcsc;
+    else if((A->type == Compression_Type::dcsc_fmt) and (B->type == Compression_Type::dcsc_fmt) and (C->type == Compression_Type::dcsc_fmt)) {
+        auto *A_CT = A->dcsc;
         A_JA = A_CT->JA;
         A_JC = A_CT->JC;
         A_JB = A_CT->JB;
@@ -274,6 +274,7 @@ inline void SpMM(struct CompressedSpMat<Weight> &A, struct CompressedSpMat<Weigh
     if(C->type == Compression_Type::csc_fmt) {
         auto *C_CT = C->csc;
         C_CT->postpopulate_t();
+        //C_CT->repopulate_t();
     }
     else if(C->type == Compression_Type::dcsc_fmt) {
         auto *C_CT = C->dcsc;
