@@ -75,7 +75,7 @@ void Data_Block<Data_Type>::reallocate(Data_Type** ptr_, uint64_t nitems_, uint6
                     exit(1);
                 }
                 if(new_nbytes > old_nbytes) {
-                    memset(ptr + nitems, 0, new_nbytes - old_nbytes);
+                    memset(ptr + nitems, 0, new_nbytes - old_nbytes); // If grow zeros the added memory
                 }
             }
             nitems = nitems_;
