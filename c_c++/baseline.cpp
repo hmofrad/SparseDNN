@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     fin.close();
     printf("INFO: Done  reading the features file %s\n", featuresFile.c_str());
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrowsFeatures, ncolsFeatures, featuresTriples.size());
-    
+    uint64_t NfeatureVectors = nrowsFeatures;
     struct CompressedSpMat<WGT> *featuresSpMat = new struct CompressedSpMat<WGT>((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
     //struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, CT);
     featuresTriples.clear();
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
     struct Triple<WGT> layerTriple;  
     std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
-    //maxLayers = 2;
+    maxLayers = 1;
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
     inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat, CT);
     finish = std::chrono::high_resolution_clock::now();
     WGT challengeRunTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
-    WGT challengeRunRate = Nneurons * (DNNedges/challengeRunTime);
+    WGT challengeRunRate = NfeatureVectors * (DNNedges/challengeRunTime);
     printf("Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
     
     validate_prediction<WGT>(featuresSpMat, trueCategories, CT);
