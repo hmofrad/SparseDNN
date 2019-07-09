@@ -364,14 +364,17 @@ template<typename Weight>
 struct CSC {
     public:
         CSC() { nrows = 0, ncols = 0; nnz = 0;  nbytes = 0; idx = 0; IA = nullptr; JA = nullptr; A = nullptr; }
-        CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_aligned_ = false);
-        CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<struct Triple<Weight>> &triples, bool page_aligned_ = false);
+        CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_aligned_ = true);
+        CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<struct Triple<Weight>> &triples, bool page_aligned_ = true);
         ~CSC();
+        inline void initialize(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
+        inline void reinitialize(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_);
         inline void prepopulate(std::vector<struct Triple<Weight>> &triples);
         inline void populate(std::vector<struct Triple<Weight>> &triples);
         inline void postpopulate();
         inline void postpopulate_t();
         inline void repopulate(struct CSC<Weight> *other_csc);
+        inline void repopulate_t();
         inline void spapopulate(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx);
         inline void spapopulate(struct DenseVec<Weight> *spa_vector, uint32_t col_idx);
         inline void spapopulate_t(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx, int tid);
@@ -385,6 +388,7 @@ struct CSC {
         uint32_t nrows;
         uint32_t ncols;
         uint64_t nnz;
+        uint64_t nnzmax;
         uint64_t nbytes;
         uint64_t idx;
         uint32_t *IA; // Rows
@@ -393,6 +397,7 @@ struct CSC {
         struct Data_Block<uint32_t> *IA_blk;
         struct Data_Block<uint32_t> *JA_blk;
         struct Data_Block<Weight>  *A_blk;
+        bool page_aligned;
 };
 
 template<typename Weight>
@@ -400,15 +405,19 @@ CSC<Weight>::CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_alig
     nrows = nrows_;
     ncols = ncols_;
     nnz   = nnz_;
+    nnzmax   = nnz_;
+    page_aligned = page_aligned_;
     IA = nullptr;
     JA = nullptr;
     A  = nullptr;
-    IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned_);
-    JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t), page_aligned_);
-    A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned_);
-    nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
+    if(nrows and ncols and nnz) {
+        IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned);
+        JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t), page_aligned);
+        A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned);
+        nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
+        JA[0] = 0;
+    }
     idx = 0;
-    JA[0] = 0;
 }
 
 template<typename Weight>
@@ -416,16 +425,21 @@ CSC<Weight>::CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<st
     nrows = nrows_;
     ncols = ncols_;
     nnz   = nnz_;
+    nnzmax   = nnz_;
+    nbytes = 0;
+    page_aligned = page_aligned_;
     IA = nullptr;
     JA = nullptr;
     A  = nullptr;
     prepopulate(triples);
-    IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned_);
-    JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t), page_aligned_);
-    A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned_);
-    nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
+    if(nrows and ncols and nnz) {
+        IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned);
+        JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t), page_aligned);
+        A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned);
+        nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
+        JA[0] = 0;
+    }
     idx = 0;
-    JA[0] = 0;
     populate(triples);
 }
 
@@ -437,6 +451,41 @@ CSC<Weight>::~CSC(){
     JA = nullptr;
     delete  A_blk;
     A  = nullptr;
+}
+
+template<typename Weight>
+inline void CSC<Weight>::initialize(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_) {
+    
+    if(nnz) {
+        //printf("Reinit\n");
+        nrows = nrows_;
+        ncols = ncols_;
+        if(nnz_ > nnz) {
+            nnz = nnz_;
+            nnzmax = nnz_;
+            JA_blk->reallocate(&JA, (ncols + 1), ((ncols + 1) * sizeof(uint32_t)));
+            IA_blk->reallocate(&IA, nnz, (nnz * sizeof(Weight)));
+            A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
+            nbytes = JA_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
+            JA[0] = 0;   
+            idx = 0;            
+        }
+        nnz = nnz_;
+        clear();
+        // We don not shrink
+    }
+    else {
+        nrows = nrows_;
+        ncols = ncols_;
+        nnz = nnz_;
+        nnzmax = nnz_;
+        IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned);
+        JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t), page_aligned);
+        A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned);
+        nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
+        JA[0] = 0;
+        idx = 0;
+    }
 }
 
 template<typename Weight>
@@ -537,47 +586,6 @@ inline void CSC<Weight>::postpopulate() {
 }
 
 template<typename Weight>
-inline void CSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx, int tid) {
-    Weight YMIN = 0;
-    Weight YMAX = 32;
-    Weight   *x_A = x_vector->A;
-    Weight   *spa_A = spa_vector->A;
-    Weight value = 0;
-    auto &idx = Env::offset[tid];
-    for(uint32_t i = 0; i < nrows; i++) {
-        if(spa_A[i]) {
-            JA[col_idx+1]++;
-            IA[idx] = i;
-            spa_A[i] += x_A[col_idx];
-            if(spa_A[i] < YMIN) {
-                A[idx] = YMIN;
-            }
-            else if(spa_A[i] > YMAX) {
-                A[idx] = YMAX;
-            }
-            else {
-                A[idx] = spa_A[i];
-            }
-            idx++;
-            spa_A[i] = 0;
-        }
-    }
-}
-
-template<typename Weight>
-inline void CSC<Weight>::postpopulate_t() {
-    JA[0] = 0;
-    for(uint32_t j = 1; j < ncols+1; j++) {
-        JA[j] += JA[j-1];
-    }
-    nnz = Env::offset[Env::nthreads-1];
-    JA_blk->reallocate(&JA, (ncols + 1), ((ncols + 1) * sizeof(uint32_t)));
-    IA_blk->reallocate(&IA, nnz, (nnz * sizeof(Weight)));
-    A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
-    nbytes = JA_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
-}
-
-template<typename Weight>
 inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc){
     uint32_t o_ncols = other_csc->numcols();
     uint32_t o_nnz = other_csc->numnonzeros();
@@ -605,7 +613,95 @@ inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc){
             }
         }
     }
-    postpopulate();   
+    nnz = idx;
+    //postpopulate();   
+}
+
+template<typename Weight>
+inline void CSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx, int tid) {
+    Weight YMIN = 0;
+    Weight YMAX = 32;
+    Weight   *x_A = x_vector->A;
+    Weight   *spa_A = spa_vector->A;
+    Weight value = 0;
+    auto &idx = Env::offset[tid];
+    /*
+    for(uint32_t i = 0; i < nrows; i++) {
+        if(spa_A[i]) {
+            spa_A[i] += x_A[col_idx];
+            if(spa_A[i] < YMIN) {
+                spa_A[i] = YMIN;
+            }
+            else if(spa_A[i] > YMAX) {
+                spa_A[i] = YMAX;
+            }
+            if(spa_A[i]) {
+                JA[col_idx+1]++;
+                IA[idx] = i;
+                idx++;
+                spa_A[i] = 0;
+            }
+        }
+    }
+    */
+    
+    for(uint32_t i = 0; i < nrows; i++) {
+        if(spa_A[i]) {
+            JA[col_idx+1]++;
+            IA[idx] = i;
+            spa_A[i] += x_A[col_idx];
+            if(spa_A[i] < YMIN) {
+                A[idx] = YMIN;
+            }
+            else if(spa_A[i] > YMAX) {
+                A[idx] = YMAX;
+            }
+            else {
+                A[idx] = spa_A[i];
+            }
+            idx++;
+            spa_A[i] = 0;
+        }
+    }
+}
+
+template<typename Weight>
+inline void CSC<Weight>::postpopulate_t() {
+    JA[0] = 0;
+    for(uint32_t j = 1; j < ncols+1; j++) {
+        JA[j] += JA[j-1];
+    }
+    //printf("%lu %lu\n", nnzmax, Env::offset[Env::nthreads-1]);
+    //exit(0);
+    
+    
+    /*
+    nnz = Env::offset[Env::nthreads-1];
+    JA_blk->reallocate(&JA, (ncols + 1), ((ncols + 1) * sizeof(uint32_t)));
+    IA_blk->reallocate(&IA, nnz, (nnz * sizeof(Weight)));
+    A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
+    nbytes = JA_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
+    */
+}
+
+template<typename Weight>
+inline void CSC<Weight>::repopulate_t() {
+    /*
+    idx = 0;
+    JA[0] = 0;
+    for(uint32_t j = 0; j < ncols; j++) {
+        //JA[j+1] = JA[j];
+        for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
+            if(A[i]) {
+                JA[j+1]++;
+                IA[idx] = o_IA[i];
+                A[idx]  = o_A[i];
+                idx++;
+            }
+        }
+    }
+    postpopulate(); 
+    */
 }
 
 template<typename Weight>
