@@ -252,7 +252,6 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
                 }
                 C_CT->spapopulate_t(x, s[tid], j, tid);
             }
-            //printf("%d %lu\n", tid, Env::offset[tid]);
         }
         else if (C->type == Compression_Type::dcsc_fmt) {
             
@@ -274,7 +273,6 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
     if(C->type == Compression_Type::csc_fmt) {
         auto *C_CT = C->csc;
         C_CT->postpopulate_t();
-        //C_CT->repopulate_t();
     }
     else if(C->type == Compression_Type::dcsc_fmt) {
         auto *C_CT = C->dcsc;
