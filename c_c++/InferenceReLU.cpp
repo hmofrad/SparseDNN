@@ -10,38 +10,74 @@
 #include "Env.hpp"
 
 template<typename Weight>
-void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, std::vector<struct DenseVec<Weight>*> &biasesDenseVec, struct CompressedSpMat<Weight> &featuresSpMat, Compression_Type compression_type) {    
+void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, std::vector<struct DenseVec<Weight>*> &biasesDenseVec, struct CompressedSpMat<Weight> *featuresSpMat, Compression_Type compression_type) {    
     auto &W1 = layersSpMat;
     auto &B1 = biasesDenseVec;
-    auto &Y0 = featuresSpMat;
-    auto &Y = Y0;
+    auto *Y0 = featuresSpMat;
+    //auto *Y = Y0;
     //struct CompressedSpMat<Weight> *Y1;
     uint32_t maxLayers = W1.size();
-    struct CompressedSpMat<Weight> *ZSpMat;
+    struct CompressedSpMat<Weight> *Y;
+    
+    
     
     //int nthreads = env_get_num_threads();
     std::vector<struct DenseVec<Weight>*> spa_VEC;
     for(uint32_t i = 0; i < Env::nthreads; i++) {
-        struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(Y0.nrows);
+        struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(Y0->nrows);
         spa_VEC.push_back(spa_DVEC);
     }
-    
-    struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(Y0.nrows);
-    auto *s = spa_DVEC;
+    auto &s = spa_VEC;
+    //struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(Y0->nrows);
+    //auto *s = spa_DVEC;
     uint32_t nrows = 0;
     uint32_t ncols = 0;
     uint32_t nnzcolsmax = 0;
     uint64_t nnzmax = 0;
-    if(compression_type == Compression_Type::csc_fmt) {
-        
+    struct CompressedSpMat<Weight> *Z = new struct CompressedSpMat<Weight>(nrows, ncols, nnzcolsmax, nnzmax, compression_type);
+    
+    //if(compression_type == Compression_Type::csc_fmt) {
+        //struct CompressedSpMat<Weight> *Y = nullptr;
         for(uint32_t r = 0; r < maxLayers; r++) {
-            auto *Y_CSC = Y.csc;
-            nrows = Y_CSC->nrows;
             auto *W = W1[r];
             auto *W_CSC = W->csc;
             ncols = W_CSC->ncols;
             auto *B = B1[r];
-            auto &s = spa_VEC;
+            //if(r == 0) {
+                //printf("1= %d/%d\n", r, (r+1)%2);
+                Y = Y0;
+                auto *Y_CSC = Y->csc;
+                nrows = Y_CSC->nrows;
+                nnzmax = SpMM_Sym<Weight>(Y, W, s);
+                //Z = new struct CompressedSpMat<Weight>(nrows, ncols, nnzcolsmax, nnzmax, compression_type);
+                //auto *Z = ZSpMat;
+                auto *Z_CSC = Z->csc;
+                Z_CSC->initialize(nrows, ncols, nnzmax);
+                SpMM<Weight>(Y, W, Z, B, s);
+                Y_CSC->repopulate(Z_CSC);
+                //delete Z;
+                printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+                printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
+             /*   
+            }
+            else {
+                if(r%2) {
+                    
+                    printf("odd %d/%d\n", r, r%2);
+                }
+                else {
+                    printf("even %d/%d\n", r, r%2);
+                }
+            }
+            */
+        }
+        //exit(0);
+        
+        for(uint32_t r = 0; r < maxLayers; r++) {
+            
+
+            //auto &s = spa_VEC;
+            /*
             nnzmax = SpMM_Sym<Weight>(Y, W, s);
             if(r == 0)
             printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
@@ -58,7 +94,9 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
               //  Y_CSC->walk();
             delete ZSpMat;
             printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+            */
         }
+    /*    
     }
     else if(compression_type == Compression_Type::dcsc_fmt) {
         for(uint32_t r = 0; r < maxLayers; r++) {
@@ -86,8 +124,8 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
             printf("%d.Y_DCSC: nrows=%d ncols=%d nnzcols=%d nnz=%lu\n", r, Y_DCSC->numrows(), Y_DCSC->numcols(), Y_DCSC->numnonzerocols(), Y_DCSC->numnonzeros()); 
         }
     }
-    
-    delete spa_DVEC;
+    */
+    //delete spa_DVEC;
     for(uint32_t i = 0; i < Env::nthreads; i++) {
         delete spa_VEC[i];
     }
@@ -96,7 +134,7 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
 }
 
 template<typename Weight>
-void validate_prediction(struct CompressedSpMat<Weight> &featuresSpMat, std::vector<uint32_t> trueCategories, Compression_Type compression_type) {
+void validate_prediction(struct CompressedSpMat<Weight> *featuresSpMat, std::vector<uint32_t> trueCategories, Compression_Type compression_type) {
     auto &Y = featuresSpMat;
     uint32_t *JA = nullptr;
     uint32_t *JC = nullptr;
@@ -107,7 +145,7 @@ void validate_prediction(struct CompressedSpMat<Weight> &featuresSpMat, std::vec
     uint32_t nrows = 0;
     
     if(compression_type == Compression_Type::csc_fmt) {
-        auto *Y_CT = Y.csc;
+        auto *Y_CT = Y->csc;
         JA = Y_CT->JA;
         IA = Y_CT->IA;
         A = Y_CT->A;
@@ -116,7 +154,7 @@ void validate_prediction(struct CompressedSpMat<Weight> &featuresSpMat, std::vec
         nrows = Y_CT->nrows;
     }
     else if(compression_type == Compression_Type::dcsc_fmt) {
-        auto *Y_CT = Y.dcsc;
+        auto *Y_CT = Y->dcsc;
         JA = Y_CT->JA;
         JC = Y_CT->JC;
         IA = Y_CT->IA;
@@ -128,7 +166,6 @@ void validate_prediction(struct CompressedSpMat<Weight> &featuresSpMat, std::vec
     
     std::vector<Weight> allCategories(nrows);
     for(uint32_t j = 0; j < nnzcols; j++) {
-        //Weight s = 0;
         for(uint32_t i = JA[j]; i < JA[j+1]; i++) {
             allCategories[IA[i]] += A[i];
         }
