@@ -26,7 +26,7 @@
 #include "Env.hpp"
 
 using WGT = double; 
-Compression_Type CT = Compression_Type::csc_fmt;
+Compression_Type CT = Compression_Type::dcsc_fmt;
 int main(int argc, char **argv) {
     printf("INFO: Welcome to Sparse Deep Neural Network Serial Implementation\n");
     
@@ -73,7 +73,8 @@ int main(int argc, char **argv) {
     printf("INFO: Done  reading the features file %s\n", featuresFile.c_str());
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrowsFeatures, ncolsFeatures, featuresTriples.size());
     
-    struct CompressedSpMat<WGT> featuresSpMat((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
+    struct CompressedSpMat<WGT> *featuresSpMat = new struct CompressedSpMat<WGT>((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
+    //struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, CT);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
     
@@ -113,7 +114,7 @@ int main(int argc, char **argv) {
     struct Triple<WGT> layerTriple;  
     std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
-    maxLayers = 3;
+    //maxLayers = 2;
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
@@ -174,7 +175,7 @@ int main(int argc, char **argv) {
     printf("Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
     
     validate_prediction<WGT>(featuresSpMat, trueCategories, CT);
- 
+    delete featuresSpMat;
     for(uint32_t i = 0; i < maxLayers; i++) {  
         delete layersSpMat[i];
         delete biasesDenseVec[i];
