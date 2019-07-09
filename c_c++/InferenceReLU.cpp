@@ -12,120 +12,59 @@
 template<typename Weight>
 void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, std::vector<struct DenseVec<Weight>*> &biasesDenseVec, struct CompressedSpMat<Weight> *featuresSpMat, Compression_Type compression_type) {    
     auto &W1 = layersSpMat;
+    uint32_t maxLayers = W1.size();
     auto &B1 = biasesDenseVec;
     auto *Y0 = featuresSpMat;
-    //auto *Y = Y0;
-    //struct CompressedSpMat<Weight> *Y1;
-    uint32_t maxLayers = W1.size();
-    struct CompressedSpMat<Weight> *Y;
-    
-    
-    
-    //int nthreads = env_get_num_threads();
+    struct CompressedSpMat<Weight> *Y = Y0;
     std::vector<struct DenseVec<Weight>*> spa_VEC;
     for(uint32_t i = 0; i < Env::nthreads; i++) {
         struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(Y0->nrows);
         spa_VEC.push_back(spa_DVEC);
     }
     auto &s = spa_VEC;
-    //struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(Y0->nrows);
-    //auto *s = spa_DVEC;
     uint32_t nrows = 0;
     uint32_t ncols = 0;
     uint32_t nnzcolsmax = 0;
     uint64_t nnzmax = 0;
-    struct CompressedSpMat<Weight> *Z = new struct CompressedSpMat<Weight>(nrows, ncols, nnzcolsmax, nnzmax, compression_type);
-    
-    //if(compression_type == Compression_Type::csc_fmt) {
-        //struct CompressedSpMat<Weight> *Y = nullptr;
+    struct CompressedSpMat<Weight> *Z;
+    if(compression_type == Compression_Type::csc_fmt) {
+        Z = new struct CompressedSpMat<Weight>(nrows, ncols, nnzcolsmax, nnzmax, compression_type);
         for(uint32_t r = 0; r < maxLayers; r++) {
             auto *W = W1[r];
             auto *W_CSC = W->csc;
             ncols = W_CSC->ncols;
             auto *B = B1[r];
-            //if(r == 0) {
-                //printf("1= %d/%d\n", r, (r+1)%2);
-                Y = Y0;
-                auto *Y_CSC = Y->csc;
-                nrows = Y_CSC->nrows;
-                nnzmax = SpMM_Sym<Weight>(Y, W, s);
-                //Z = new struct CompressedSpMat<Weight>(nrows, ncols, nnzcolsmax, nnzmax, compression_type);
-                //auto *Z = ZSpMat;
-                auto *Z_CSC = Z->csc;
-                Z_CSC->initialize(nrows, ncols, nnzmax);
-                SpMM<Weight>(Y, W, Z, B, s);
-                Y_CSC->repopulate(Z_CSC);
-                //delete Z;
-                printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
-                printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
-             /*   
-            }
-            else {
-                if(r%2) {
-                    
-                    printf("odd %d/%d\n", r, r%2);
-                }
-                else {
-                    printf("even %d/%d\n", r, r%2);
-                }
-            }
-            */
-        }
-        //exit(0);
-        
-        for(uint32_t r = 0; r < maxLayers; r++) {
-            
-
-            //auto &s = spa_VEC;
-            /*
+            auto *Y_CSC = Y->csc;
+            nrows = Y_CSC->nrows;
             nnzmax = SpMM_Sym<Weight>(Y, W, s);
-            if(r == 0)
-            printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
-            
-            ZSpMat = new struct CompressedSpMat<Weight>(nrows, ncols, nnzcolsmax, nnzmax, compression_type);
-            auto *Z = ZSpMat;
             auto *Z_CSC = Z->csc;
-            printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
-            
+            Z_CSC->initialize(nrows, ncols, nnzmax);
             SpMM<Weight>(Y, W, Z, B, s);
-            //Z_CSC->walk();
             Y_CSC->repopulate(Z_CSC);
-            //if(r == 2)
-              //  Y_CSC->walk();
-            delete ZSpMat;
             printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
-            */
-        }
-    /*    
+            //printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
+        } 
+        delete Z;
     }
     else if(compression_type == Compression_Type::dcsc_fmt) {
         for(uint32_t r = 0; r < maxLayers; r++) {
-            auto *Y_DCSC = Y.dcsc;
-            nrows = Y_DCSC->nrows;
             auto *W = W1[r];
             auto *W_DCSC = W->dcsc;
             ncols = W_DCSC->ncols;
             auto *B = B1[r];
-            auto &s = spa_VEC;
-            
+            auto *Y_DCSC = Y->dcsc;
+            nrows = Y_DCSC->nrows;
             nnzmax = SpMM_Sym<Weight>(Y, W, s);
-            
             nnzcolsmax = W_DCSC->nnzcols;
-            ZSpMat = new struct CompressedSpMat<Weight>(nrows, ncols, nnzcolsmax, nnzmax, compression_type);
-            auto *Z = ZSpMat;
+            Z = new struct CompressedSpMat<Weight>(nrows, ncols, nnzcolsmax, nnzmax, compression_type);
             auto *Z_DCSC = Z->dcsc;
-            
             SpMM<Weight>(Y, W, Z, B, s);
-
             Y_DCSC->repopulate(Z_DCSC);
-            //if(r == 2)
-              //  Y_DCSC->walk();
-            delete ZSpMat;
+            delete Z;
             printf("%d.Y_DCSC: nrows=%d ncols=%d nnzcols=%d nnz=%lu\n", r, Y_DCSC->numrows(), Y_DCSC->numcols(), Y_DCSC->numnonzerocols(), Y_DCSC->numnonzeros()); 
         }
     }
-    */
-    //delete spa_DVEC;
+
     for(uint32_t i = 0; i < Env::nthreads; i++) {
         delete spa_VEC[i];
     }
