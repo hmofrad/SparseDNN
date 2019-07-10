@@ -26,7 +26,7 @@
 #include "Env.hpp"
 
 using WGT = double; 
-Compression_Type CT = Compression_Type::dcsc_fmt;
+Compression_Type CT = Compression_Type::csc_fmt;
 int main(int argc, char **argv) {
     printf("INFO: Welcome to Sparse Deep Neural Network Serial Implementation\n");
     
@@ -34,9 +34,9 @@ int main(int argc, char **argv) {
         fprintf(stderr, "USAGE: %s -n <Nneurons> -l <maxLayers> <path_to_input> <path_to_dnn>\n", argv[0]);
         exit(1);         
     }
-    std::vector<WGT> neuralNetBias = {0, -0.3,-0.35,-0.4,-0.45};
+    std::vector<WGT> neuralNetBias = {-0.3,-0.35,-0.4,-0.45};
     uint32_t Nneurons = atoi(argv[2]);
-    std::vector<uint32_t> NneuronsVector = {3, 1024, 4096, 16384, 65536};
+    std::vector<uint32_t> NneuronsVector = {1024, 4096, 16384, 65536};
     std::ptrdiff_t idxN = std::distance(NneuronsVector.begin(), std::find(NneuronsVector.begin(), NneuronsVector.end(), Nneurons));
     if(idxN >= NneuronsVector.size()) {
         fprintf(stderr, "Invalid number of neurons/layer %d\n", Nneurons);
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
     featuresTriples.shrink_to_fit();
     
     uint32_t maxLayers = atoi(argv[4]);
-    std::vector<uint32_t> maxLayersVector = {1, 120, 480, 1192};
+    std::vector<uint32_t> maxLayersVector = {120, 480, 1192};
     std::ptrdiff_t idxL = std::distance(maxLayersVector.begin(), std::find(maxLayersVector.begin(), maxLayersVector.end(), maxLayers));
     if(idxL >= maxLayersVector.size()) {
         fprintf(stderr, "Invalid number of layers %d\n", maxLayers);
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
     struct Triple<WGT> layerTriple;  
     std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
-    maxLayers = 1;
+    //maxLayers = 1;
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
