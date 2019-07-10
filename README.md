@@ -1,3 +1,2 @@
 # SparseDNN
-Sparse Deep Neural Network 
-Please see the README in c_c++ folder
+Sparse Deep Neural Network Implementation. Please see the README inside c_c++ folder.
