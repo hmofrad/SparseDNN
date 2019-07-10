@@ -1,5 +1,3 @@
 # SparseDNN
 Sparse Deep Neural Network 
-
-# C_c++  Implementation
-# Matlab Implementation
+Please see the README in c_c++ folder
