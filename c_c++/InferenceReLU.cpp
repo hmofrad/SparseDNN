@@ -36,12 +36,14 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
             auto *B = B1[r];
             auto *Y_CSC = Y->csc;
             nrows = Y_CSC->nrows;
+            //if(r < 1)
             nnzmax = SpMM_Sym<Weight>(Y, W, s);
             auto *Z_CSC = Z->csc;
             Z_CSC->initialize(nrows, ncols, nnzmax);
             SpMM<Weight>(Y, W, Z, B, s);
             Y_CSC->repopulate(Z_CSC);
-            printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+            Y_CSC->postpopulate();
+            //printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
             //printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
         } 
         delete Z;
@@ -61,7 +63,7 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
             SpMM<Weight>(Y, W, Z, B, s);
             Y_DCSC->repopulate(Z_DCSC);
             delete Z;
-            printf("%d.Y_DCSC: nrows=%d ncols=%d nnzcols=%d nnz=%lu\n", r, Y_DCSC->numrows(), Y_DCSC->numcols(), Y_DCSC->numnonzerocols(), Y_DCSC->numnonzeros()); 
+            //printf("%d.Y_DCSC: nrows=%d ncols=%d nnzcols=%d nnz=%lu\n", r, Y_DCSC->numrows(), Y_DCSC->numcols(), Y_DCSC->numnonzerocols(), Y_DCSC->numnonzeros()); 
         }
     }
 
