@@ -1,14 +1,14 @@
 # SparseDNN
-Sparse Deep Neural Network written in C/C++
+Sparse Deep Neural Network Training and Building written in C/C++
 
 ## Build
-    make
+    make clean && make
 
 ## Run
+    export OMP_NUM_THREADS=12
+    export OMP_PLACES=cores
+    export OMP_PROC_BIND=close
     ./baseline -n 1024 -l 120 ../data/MNIST/ ../data/DNN/
-
-## Unistall
-    make clean
 
 ## Contact
     Mohammad Hasanzadeh Mofrad
