@@ -462,7 +462,7 @@ inline void CSC<Weight>::initialize(uint32_t nrows_, uint32_t ncols_, uint64_t n
         //printf("Reinit\n");
         nrows = nrows_;
         ncols = ncols_;
-        if(nnz_ > nnz) {
+        //if(nnz_ > nnz) {
             nnz = nnz_;
             nnzmax = nnz_;
             JA_blk->reallocate(&JA, (ncols + 1), ((ncols + 1) * sizeof(uint32_t)));
@@ -471,8 +471,8 @@ inline void CSC<Weight>::initialize(uint32_t nrows_, uint32_t ncols_, uint64_t n
             nbytes = JA_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
             JA[0] = 0;   
             idx = 0;            
-        }
-        nnz = nnz_;
+        //}
+        //nnz = nnz_;
         clear();
         // We don not shrink
     }
