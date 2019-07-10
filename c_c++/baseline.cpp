@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
     featuresTriples.shrink_to_fit();
     
     uint32_t maxLayers = atoi(argv[4]);
-    std::vector<uint32_t> maxLayersVector = {120, 480, 1192};
+    std::vector<uint32_t> maxLayersVector = {120, 480, 1920};
     std::ptrdiff_t idxL = std::distance(maxLayersVector.begin(), std::find(maxLayersVector.begin(), maxLayersVector.end(), maxLayers));
     if(idxL >= maxLayersVector.size()) {
         fprintf(stderr, "Invalid number of layers %d\n", maxLayers);
@@ -162,8 +162,8 @@ int main(int argc, char **argv) {
     printf("INFO: Done  reading %d layer files\n", maxLayers);
     WGT readLayerTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
     WGT readLayerRate = (WGT) DNNedges/readLayerTime;
-    printf("DNN neurons/layer: %d, layers:%d, edges:%lu\n", Nneurons, maxLayers, DNNedges);
-    printf("Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
+    printf("INFO: DNN neurons/layer: %d, layers:%d, edges:%lu\n", Nneurons, maxLayers, DNNedges);
+    printf("INFO: Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
     
     Env::init();
     
@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
     finish = std::chrono::high_resolution_clock::now();
     WGT challengeRunTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
     WGT challengeRunRate = NfeatureVectors * (DNNedges/challengeRunTime);
-    printf("Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
+    printf("INFO: Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
     
     validate_prediction<WGT>(featuresSpMat, trueCategories, CT);
     delete featuresSpMat;
