@@ -34,6 +34,58 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
             auto *W_CSC = W->csc;
             ncols = W_CSC->ncols;
             auto *B = B1[r];
+            if((r+1) % 2) {
+                printf("%d: Z=YW\n", r);
+                auto *Y_CSC = Y->csc;
+                nrows = Y_CSC->nrows;
+                //if(r < 1)
+                nnzmax = SpMM_Sym<Weight>(Y, W, s);
+            printf("%d:nnzmax=%d\n", r, nnzmax);
+                auto *Z_CSC = Z->csc;
+                Z_CSC->initialize(nrows, ncols, nnzmax);
+                SpMM<Weight>(Y, W, Z, B, s);
+                Z_CSC->walk();
+                //Y_CSC->repopulate(Z_CSC);
+                //Y_CSC->postpopulate();
+                printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
+                printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+                //exit(0);
+            }
+            else {
+                printf("%d: Y=ZW\n", r);
+                auto *Z_CSC = Z->csc;
+                nrows = Z_CSC->nrows;
+                Z_CSC->walk();
+                nnzmax = SpMM_Sym<Weight>(Z, W, s);
+                printf("%d:nnzmax=%d\n", r, nnzmax);
+                //exit(0);
+                auto *Y_CSC = Y->csc;
+                printf("1.Znnz=%d Ynnz=%d \n", Z_CSC->nnz, Y_CSC->nnz);
+                
+                Y_CSC->initialize(nrows, ncols, nnzmax);
+                
+                printf("2.Znnz=%d Ynnz=%d \n", Z_CSC->nnz, Y_CSC->nnz);
+                printf("SPMM\n");
+                SpMM<Weight>(Z, W, Y, B, s);
+                Y_CSC->walk();
+                printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
+                printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+            }
+
+            //break;
+        } 
+        printf("????\n");
+        delete Z;
+        printf("XXXXXXXXX\n");
+        
+        
+        /*
+        Z = new struct CompressedSpMat<Weight>(nrows, ncols, nnzcolsmax, nnzmax, compression_type);
+        for(uint32_t r = 0; r < maxLayers; r++) {
+            auto *W = W1[r];
+            auto *W_CSC = W->csc;
+            ncols = W_CSC->ncols;
+            auto *B = B1[r];
             auto *Y_CSC = Y->csc;
             nrows = Y_CSC->nrows;
             //if(r < 1)
@@ -41,12 +93,15 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
             auto *Z_CSC = Z->csc;
             Z_CSC->initialize(nrows, ncols, nnzmax);
             SpMM<Weight>(Y, W, Z, B, s);
-            Y_CSC->repopulate(Z_CSC);
-            Y_CSC->postpopulate();
+            //Y_CSC->repopulate(Z_CSC);
+            //Y_CSC->postpopulate();
+            Z_CSC->walk();
+            exit(0);
             //printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
             //printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
         } 
         delete Z;
+        */
     }
     else if(compression_type == Compression_Type::dcsc_fmt) {
         for(uint32_t r = 0; r < maxLayers; r++) {
@@ -132,10 +187,10 @@ void validate_prediction(struct CompressedSpMat<Weight> *featuresSpMat, std::vec
     }
     
     if(tf) {
-        printf("Challenge PASSED\n");
+        printf("INFO: Challenge PASSED\n");
     }
     else {
-        printf("Challenge FAILED\n");
+        printf("INFO: Challenge FAILED\n");
     }
 }
 
