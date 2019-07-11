@@ -25,6 +25,8 @@
 #include "InferenceReLU.cpp"
 #include "Env.hpp"
 
+//std::vector<
+
 using WGT = double; 
 Compression_Type CT = Compression_Type::csc_fmt;
 int main(int argc, char **argv) {
@@ -51,7 +53,14 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Error: Opening %s\n", featuresFile.c_str());
         exit(1);
     }
-
+    
+    //Env::init();
+    
+    
+    
+    //exit(0);
+    
+    
     uint64_t nrowsFeatures = 0; 
     uint64_t ncolsFeatures = 0;
     std::vector<struct Triple<WGT>> featuresTriples;
@@ -77,7 +86,8 @@ int main(int argc, char **argv) {
     //struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, CT);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
-    
+    //delete featuresSpMat;
+    //exit(0);
     uint32_t maxLayers = atoi(argv[4]);
     std::vector<uint32_t> maxLayersVector = {120, 480, 1920};
     std::ptrdiff_t idxL = std::distance(maxLayersVector.begin(), std::find(maxLayersVector.begin(), maxLayersVector.end(), maxLayers));
@@ -114,7 +124,7 @@ int main(int argc, char **argv) {
     struct Triple<WGT> layerTriple;  
     std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
-    //maxLayers = 1;
+    maxLayers = 1;
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
