@@ -103,9 +103,9 @@ void Data_Block<Data_Type>::reallocate(Data_Type** ptr_, uint64_t nitems_, uint6
 
 template<typename Data_Type>
 void Data_Block<Data_Type>::deallocate() {
-    printf("1.%p %d\n", ptr, nbytes);
+    //printf("1.%p %d\n", ptr, nbytes);
     if(ptr and nbytes) {
-        printf("2.%p %d\n", ptr, nbytes);
+      //  printf("2.%p %d\n", ptr, nbytes);
         if((munmap(ptr, nbytes)) == -1) {
             fprintf(stderr, "Error: Cannot unmap memory\n");
             exit(1);
