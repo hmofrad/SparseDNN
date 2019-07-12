@@ -16,7 +16,7 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> *A, struct CompressedSpM
                         // struct DenseVec<Weight> *s) {    
     uint32_t *A_JA = nullptr;
     uint32_t *A_JC = nullptr;
-    uint32_t *A_JO = nullptr;
+    //uint32_t *A_JO = nullptr;
     uint32_t *A_JB = nullptr;
     uint32_t *A_JI = nullptr;
     uint32_t *A_IA = nullptr;
@@ -26,7 +26,7 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> *A, struct CompressedSpM
     uint32_t A_nnzcols = 0;     
 
     uint32_t *B_JA = nullptr;
-    uint32_t *B_JO = nullptr;
+    //uint32_t *B_JO = nullptr;
     uint32_t *B_JC = nullptr;
     uint32_t *B_JB = nullptr;
     uint32_t *B_JI = nullptr;
@@ -39,7 +39,7 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> *A, struct CompressedSpM
     if((A->type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
         auto *A_CT = A->csc;
         A_JA = A_CT->JA;
-        A_JO = A_CT->JO;
+        //A_JO = A_CT->JO;
         A_IA = A_CT->IA;      
         A_A  = A_CT->A;
         A_ncols = A_CT->ncols;
@@ -48,7 +48,7 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> *A, struct CompressedSpM
         
         auto *B_CT = B->csc;
         B_JA = B_CT->JA;
-        B_JO = B_CT->JO;
+        //B_JO = B_CT->JO;
         B_IA = B_CT->IA;      
         B_A  = B_CT->A;
         B_ncols = B_CT->ncols;
@@ -104,10 +104,12 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> *A, struct CompressedSpM
         
         if((A->type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
             for(uint32_t j = start; j < end; j++) {
-                for(uint32_t k = B_JA[j] + B_JO[j]; k < B_JA[j+1] + B_JO[j]; k++) {
+                for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                //for(uint32_t k = B_JA[j] + B_JO[j]; k < B_JA[j+1] + B_JO[j]; k++) {
                     //k += B_JO[j];
                     uint32_t l = B_IA[k];
-                    for(uint32_t m = A_JA[l] + A_JO[l]; m < A_JA[l+1] + A_JO[l]; m++) {
+                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                    //for(uint32_t m = A_JA[l] + A_JO[l]; m < A_JA[l+1] + A_JO[l]; m++) {
                         //m += A_JO[l];
                         s_A[A_IA[m]] = 1;
                     }
@@ -152,7 +154,7 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
                  struct DenseVec<Weight> *x, std::vector<struct DenseVec<Weight> *> &s) {  
                  //struct DenseVec<Weight> *s) {
     uint32_t *A_JA = nullptr;
-    uint32_t *A_JO = nullptr;
+    //uint32_t *A_JO = nullptr;
     uint32_t *A_JC = nullptr;
     uint32_t *A_JB = nullptr;
     uint32_t *A_JI = nullptr;
@@ -163,7 +165,7 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
     uint32_t A_nnzcols = 0;     
 
     uint32_t *B_JA = nullptr;
-    uint32_t *B_JO = nullptr;
+    //uint32_t *B_JO = nullptr;
     uint32_t *B_JC = nullptr;
     uint32_t *B_JB = nullptr;
     uint32_t *B_JI = nullptr;
@@ -179,7 +181,7 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
     if((A->type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt) and (C->type == Compression_Type::csc_fmt)) {
         auto *A_CT = A->csc;
         A_JA = A_CT->JA;
-        A_JO = A_CT->JO;
+        //A_JO = A_CT->JO;
         A_IA = A_CT->IA;      
         A_A  = A_CT->A;
         A_ncols = A_CT->ncols;
@@ -188,7 +190,7 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
         
         auto *B_CT = B->csc;
         B_JA = B_CT->JA;
-        B_JO = B_CT->JO;
+        //B_JO = B_CT->JO;
         B_IA = B_CT->IA;      
         B_A  = B_CT->A;
         B_ncols = B_CT->ncols;
@@ -255,10 +257,12 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
         if(C->type == Compression_Type::csc_fmt) {
             auto *C_CT = C->csc;
             for(uint32_t j = start; j < end; j++) {
-                for(uint32_t k = B_JA[j] + B_JO[j]; k < B_JA[j+1] + B_JO[j]; k++) {
+                for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
+                //for(uint32_t k = B_JA[j] + B_JO[j]; k < B_JA[j+1] + B_JO[j]; k++) {
                     //k += B_JO[j];
                     uint32_t l = B_IA[k];
-                    for(uint32_t m = A_JA[l] + A_JO[l]; m < A_JA[l+1] + A_JO[l]; m++) {
+                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
+                    //for(uint32_t m = A_JA[l] + A_JO[l]; m < A_JA[l+1] + A_JO[l]; m++) {
                         //m += A_JO[l];
                         s_A[A_IA[m]] += B_A[k] * A_A[m];
                     }
@@ -292,7 +296,9 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
     {
         int tid = omp_get_thread_num();
         C->csc->postpopulate_t(tid);
+        A->csc->repopulate(C->csc, tid);
     }
+    
     //printf("xxxxx\n");
     //j = 0;
     //for(uint32_t j = 0; j < C->csc->ncols; j++) {
