@@ -462,8 +462,8 @@ CSC<Weight>::~CSC(){
     //int nb = ncols * sizeof(uint32_t);
     //nb += (sysconf(_SC_PAGESIZE) - (nb % sysconf(_SC_PAGESIZE)));
     //printf("JO %p %d %d\n", JO, ncols * sizeof(uint32_t), nb);
-//delete JO;
-  //  JO = nullptr;
+    delete JO_blk;
+    JO = nullptr;
     
     
     delete IA_blk;
