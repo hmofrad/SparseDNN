@@ -776,10 +776,11 @@ inline void CSC<Weight>::postpopulate_t(int tid) {
         for(uint32_t i = 0; i < Env::nthreads; i++) {    
             idx += (Env::offset_nnz[i] - Env::start_nnz[i]);
         }
-        //printf("tid=%d oid=%lu\n", tid, idx);
+       // printf("tid=%d oid=%lu\n", tid, idx);
     }
+    //#pragma omp barrier
     /*
-    #pragma omp barrier
+    
     for(uint32_t j = 0; j < 1025; j++) {
         printf("%d %d\n", j, JO[j]);
     }
@@ -819,22 +820,36 @@ inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc, int tid){
     }
     #pragma omp barrier
     
+    /*
+    if(!tid) {
+        int t = 0;
+        for(int32_t i = 0; i < Env::nthreads; i++) {
+            //t += 
+            printf("%d: %lu %lu %lu\n", i, Env::start_nnz[i], Env::end_nnz[i], Env::offset_nnz[i]);
+        }
+    }
+    */
     uint32_t start_col = Env::start_col[tid];
     uint32_t end_col = Env::end_col[tid];
     uint64_t offset = 0;
-    auto &idx = Env::indices_nnz[tid];
+    uint64_t idx = 0;
     JA[start_col] = 0;
     if(tid) {
         for(int32_t i = 0; i < tid; i++) {
             JA[start_col] += (Env::offset_nnz[i] - Env::start_nnz[i]);
+            //offset += Env::end_nnz[i];
+            //offset += (Env::offset_nnz[i] - Env::start_nnz[i]);
+            //idx += JA[start_col];//(Env::end_nnz[i] - Env::offset_nnz[i]);
             offset += (Env::end_nnz[i] - Env::offset_nnz[i]);
-            idx += JA[start_col];//(Env::end_nnz[i] - Env::offset_nnz[i]);
         }
+        //JA[start_col] = offset;
+        //offset = Env::start_nnz[tid];
+        idx = JA[start_col];
     }
     
-    //printf("%d %lu %d\n", tid, idx, JA[start_col]);
+ //   printf("tid=%d off=%lu idx=%lu ja=%d\n", tid, offset, idx, JA[start_col]);
     
-    //idx = 
+    //#pragma omp barrier
     for(uint32_t j = start_col; j < end_col; j++) {
         JA[j+1] = JA[j];
         for(uint32_t i = o_JA[j] + offset; i < o_JA[j + 1] + offset; i++) {
@@ -847,6 +862,7 @@ inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc, int tid){
         }
     }
     
+    //#pragma omp barrier
     
    // if((tid == Env::nthreads - 1)) {
      //   JA[end_col] += JA[end_col-1];
