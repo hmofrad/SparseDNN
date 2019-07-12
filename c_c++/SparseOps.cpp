@@ -269,7 +269,11 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
                 }
                 C_CT->spapopulate_t(x, s[tid], j, tid);
             }
+            #pragma omp barrier
+            C_CT->postpopulate_t(tid);
             //#pragma omp barrier
+            auto *A_CT = A->csc;
+            A_CT->repopulate(C_CT, tid);
             //C_CT->postpopulate_t(tid);
             //#pragma omp barrier
             
@@ -291,13 +295,15 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
         }
         
     }
-    
+    /*
     #pragma omp parallel
     {
         int tid = omp_get_thread_num();
         C->csc->postpopulate_t(tid);
+        
         A->csc->repopulate(C->csc, tid);
     }
+    */
     
     //printf("xxxxx\n");
     //j = 0;
