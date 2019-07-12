@@ -89,7 +89,7 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> *A, struct CompressedSpM
         fprintf(stderr, "Error: SpMM dimensions do not agree A[%d %d] B[%d %d]\n", A_nrows, A_ncols, B_nrows, B_ncols);
         exit(1);
     }
-    
+    Env::env_unset_offset();
     #pragma omp parallel reduction(+:nnzmax)
     {
         long nthreads = omp_get_num_threads();
@@ -104,11 +104,11 @@ inline uint64_t SpMM_Sym(struct CompressedSpMat<Weight> *A, struct CompressedSpM
         
         if((A->type == Compression_Type::csc_fmt) and (B->type == Compression_Type::csc_fmt)) {
             for(uint32_t j = start; j < end; j++) {
-                for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
-                    k += B_JO[j];
+                for(uint32_t k = B_JA[j] + B_JO[j]; k < B_JA[j+1] + B_JO[j]; k++) {
+                    //k += B_JO[j];
                     uint32_t l = B_IA[k];
-                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
-                        m += A_JO[l];
+                    for(uint32_t m = A_JA[l] + A_JO[l]; m < A_JA[l+1] + A_JO[l]; m++) {
+                        //m += A_JO[l];
                         s_A[A_IA[m]] = 1;
                     }
                 }
@@ -243,7 +243,8 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
         fprintf(stderr, "Error: SpMV_EW dimensions do not agree [%d != %d]\n", C_ncols, x_nitems);
         exit(1);
     }
-    
+    auto *C_CT = C->csc;
+    //C_CT->test();
     #pragma omp parallel
     {
         int tid = omp_get_thread_num();
@@ -254,11 +255,11 @@ inline void SpMM(struct CompressedSpMat<Weight> *A, struct CompressedSpMat<Weigh
         if(C->type == Compression_Type::csc_fmt) {
             auto *C_CT = C->csc;
             for(uint32_t j = start; j < end; j++) {
-                for(uint32_t k = B_JA[j]; k < B_JA[j+1]; k++) {
-                    k += B_JO[j];
+                for(uint32_t k = B_JA[j] + B_JO[j]; k < B_JA[j+1] + B_JO[j]; k++) {
+                    //k += B_JO[j];
                     uint32_t l = B_IA[k];
-                    for(uint32_t m = A_JA[l]; m < A_JA[l+1]; m++) {
-                        m += A_JO[l];
+                    for(uint32_t m = A_JA[l] + A_JO[l]; m < A_JA[l+1] + A_JO[l]; m++) {
+                        //m += A_JO[l];
                         s_A[A_IA[m]] += B_A[k] * A_A[m];
                     }
                 }
