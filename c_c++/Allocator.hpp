@@ -59,7 +59,7 @@ void Data_Block<Data_Type>::allocate() {
             exit(1);
         }
         memset(ptr, 0,  nbytes); 
-        printf("%p %d\n", ptr, nbytes);
+       // printf("%p %d\n", ptr, nbytes);
     }
 }
 
