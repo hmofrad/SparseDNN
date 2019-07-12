@@ -30,7 +30,7 @@
 using WGT = double; 
 Compression_Type CT = Compression_Type::csc_fmt;
 int main(int argc, char **argv) {
-    printf("INFO: Welcome to Sparse Deep Neural Network Serial Implementation\n");
+    printf("INFO: Welcome to Sparse Deep Neural Network Implementation\n");
     
     if(argc != 7) {
         fprintf(stderr, "USAGE: %s -n <Nneurons> -l <maxLayers> <path_to_input> <path_to_dnn>\n", argv[0]);
@@ -83,6 +83,7 @@ int main(int argc, char **argv) {
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrowsFeatures, ncolsFeatures, featuresTriples.size());
     uint64_t NfeatureVectors = nrowsFeatures;
     struct CompressedSpMat<WGT> *featuresSpMat = new struct CompressedSpMat<WGT>((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
+    //struct CompressedSpMat<WGT> *featuresSpMat1 = new struct CompressedSpMat<WGT>((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
     //struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, CT);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
@@ -124,7 +125,7 @@ int main(int argc, char **argv) {
     struct Triple<WGT> layerTriple;  
     std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
-    maxLayers = 1;
+    //maxLayers = 4;
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
@@ -186,6 +187,7 @@ int main(int argc, char **argv) {
     
     validate_prediction<WGT>(featuresSpMat, trueCategories, CT);
     delete featuresSpMat;
+    //delete featuresSpMat1;
     for(uint32_t i = 0; i < maxLayers; i++) {  
         delete layersSpMat[i];
         delete biasesDenseVec[i];
