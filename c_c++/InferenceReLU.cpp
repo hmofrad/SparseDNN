@@ -35,48 +35,50 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
             ncols = W_CSC->ncols;
             auto *B = B1[r];
             if((r+1) % 2) {
-                printf("%d: Z=YW\n", r);
+                //printf("%d: Z=YW\n", r);
                 auto *Y_CSC = Y->csc;
                 nrows = Y_CSC->nrows;
                 //if(r < 1)
                 nnzmax = SpMM_Sym<Weight>(Y, W, s);
-            printf("%d:nnzmax=%d\n", r, nnzmax);
+               // printf("%d:nnzmax=%lu\n", r, nnzmax);
                 auto *Z_CSC = Z->csc;
                 Z_CSC->initialize(nrows, ncols, nnzmax);
                 SpMM<Weight>(Y, W, Z, B, s);
-                Z_CSC->walk();
+                //Z_CSC->walk();
                 //Y_CSC->repopulate(Z_CSC);
                 //Y_CSC->postpopulate();
-                printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
-                printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+                //printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
+                //printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+                //printf("%d.W_CSC: nrows=%d ncols=%d nnz=%lu\n", r, W_CSC->numrows(), W_CSC->numcols(), W_CSC->numnonzeros()); 
                 //exit(0);
             }
             else {
-                printf("%d: Y=ZW\n", r);
+                //printf("%d: Y=ZW\n", r);
                 auto *Z_CSC = Z->csc;
                 nrows = Z_CSC->nrows;
-                Z_CSC->walk();
+                //Z_CSC->walk();
                 nnzmax = SpMM_Sym<Weight>(Z, W, s);
-                printf("%d:nnzmax=%d\n", r, nnzmax);
+                //printf("%d:nnzmax=%lu\n", r, nnzmax);
                 //exit(0);
                 auto *Y_CSC = Y->csc;
-                printf("1.Znnz=%d Ynnz=%d \n", Z_CSC->nnz, Y_CSC->nnz);
+                //printf("1.Znnz=%d Ynnz=%d \n", Z_CSC->nnz, Y_CSC->nnz);
                 
                 Y_CSC->initialize(nrows, ncols, nnzmax);
                 
-                printf("2.Znnz=%d Ynnz=%d \n", Z_CSC->nnz, Y_CSC->nnz);
-                printf("SPMM\n");
+                //printf("2.Znnz=%d Ynnz=%d \n", Z_CSC->nnz, Y_CSC->nnz);
+                //printf("SPMM\n");
                 SpMM<Weight>(Z, W, Y, B, s);
-                Y_CSC->walk();
-                printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
-                printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+                //Y_CSC->walk();
+                //printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros());
+                //printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros());
+               // printf("%d.W_CSC: nrows=%d ncols=%d nnz=%lu\n", r, W_CSC->numrows(), W_CSC->numcols(), W_CSC->numnonzeros());
             }
 
             //break;
         } 
-        printf("????\n");
+        //printf("????\n");
         delete Z;
-        printf("XXXXXXXXX\n");
+        //printf("XXXXXXXXX\n");
         
         
         /*
