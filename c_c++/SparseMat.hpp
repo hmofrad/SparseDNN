@@ -387,7 +387,7 @@ struct CSC {
         inline uint32_t numcols()   const { return(ncols); };
         inline uint64_t size()        const { return(nbytes); };
         inline void clear();
-        
+        void test();
         uint32_t nrows;
         uint32_t ncols;
         uint64_t nnz;
@@ -492,7 +492,7 @@ inline void CSC<Weight>::initialize(uint32_t nrows_, uint32_t ncols_, uint64_t n
         nrows = nrows_;
         ncols = ncols_;
         if(nnz_ > nnzmax) {
-            printf("Reinit %d %d\n", nnz_, nnzmax);
+            //printf("Reinit %d %d\n", nnz_, nnzmax);
             nnz = nnz_;
             nnzmax = nnz_;
             JA_blk->reallocate(&JA, (ncols + 1), ((ncols + 1) * sizeof(uint32_t)));
@@ -656,6 +656,29 @@ inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc){
 }
 
 template<typename Weight>
+void CSC<Weight>::test() {
+    /*
+    for(uint32_t i = 0; i < Env::nthreads; i++) {
+        printf("%lu %lu %lu %lu %lu %lu\n", Env::start_col[i], Env::end_col[i], Env::start_nnz[i], Env::end_nnz[i], Env::length_nnz[i], Env::offset_nnz[i]);
+    }
+    */
+    for(uint32_t j = 0; j < ncols+1; j++) {
+        if(JA[j]){
+            printf("%d\n", JA[j]);
+            exit(0);
+        }
+    }
+    
+    for(uint32_t j = 0; j < nnz; j++) {
+        if(IA[j] or A[j]){
+            printf("%d %f\n", IA[j], A[j]);
+            exit(0);
+        }
+    }
+    
+}
+
+template<typename Weight>
 inline void CSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx, int tid) {
     Weight YMIN = 0;
     Weight YMAX = 32;
@@ -680,6 +703,7 @@ inline void CSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct
                 A[idx] = spa_A[i];
                 idx++;
                 spa_A[i] = 0;
+                //Env::indices_nnz[tid]++;
             }
         }
     }
@@ -708,12 +732,16 @@ inline void CSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct
 
 template<typename Weight>
 inline void CSC<Weight>::postpopulate_t(int tid) {
+    
     uint32_t start_col = Env::start_col[tid];
     uint32_t end_col = Env::end_col[tid];
+    /*
     uint32_t start_nnz = Env::start_nnz[tid];
     uint32_t end_nnz = Env::end_nnz[tid];
     uint32_t length_nnz = Env::length_nnz[tid];
     uint32_t offset_nnz = Env::offset_nnz[tid];
+    */
+    //printf("%d %lu %lu %lu %lu %lu %lu %lu\n", tid, Env::start_col[tid], Env::end_col[tid], Env::start_nnz[tid], Env::end_nnz[tid], Env::length_nnz[tid], Env::offset_nnz[tid], Env::start_nnz[tid] - Env::offset_nnz[tid]); 
     /*
     if(tid == 3) {
      for(uint32_t j = start_col; j < end_col; j++) {
@@ -737,52 +765,68 @@ inline void CSC<Weight>::postpopulate_t(int tid) {
     //printf("2.%d %d\n", tid, JA[start_col]);
     if(tid == 0) {
         JA[0] = 0;
-    for(uint32_t j = start_col+1; j < end_col; j++) {
-        
-        //if(tid == 1) {
-            //printf("1.%d %d %d\n", j, JA[j-1], JA[j], JA[j-1], JA[j]);
-          //  JA[j] += JA[j-1];
-            //printf("2.%d %d %d\n", j, JA[j-1], JA[j]);
-            //exit(0);
-        //}
-        
-        JA[j] += JA[j-1];
-        JO[j] = 0;
-    }
+        for(uint32_t j = start_col+1; j < end_col; j++) {
+            
+            //if(tid == 1) {
+                //printf("1.%d %d %d\n", j, JA[j-1], JA[j], JA[j-1], JA[j]);
+              //  JA[j] += JA[j-1];
+                //printf("2.%d %d %d\n", j, JA[j-1], JA[j]);
+                //exit(0);
+            //}
+            
+            JA[j] += JA[j-1];
+            JO[j] = 0;
+            //if(j == 511)
+              //  printf("00000: %d %d\n", JA[j], end_col);
+        }
     //JO[end_col-1] = Env::end_nnz[tid];
+    //JA[end_col] += JA[end_col-1];//Env::end_nnz[tid];
     }
     else {
         //JO[start_col] = Env::start_nnz[tid];
+        JA[start_col] = 0;
         for(int32_t i = 0; i < tid; i++) {
             JA[start_col] += (Env::offset_nnz[i] - Env::start_nnz[i]);
+            //JA[start_col] = (Env::offset_nnz[i]);
             JO[start_col] += (Env::end_nnz[i] - Env::offset_nnz[i]);
             
         }
-        printf(">>>tid=%d ja=%d jo=%d\n", tid, JA[start_col], JO[start_col]);
+        
+        //printf(">>>tid=%d ja=%d jo=%d\n", tid, JA[start_col], JO[start_col]);
         for(uint32_t j = start_col+1; j < end_col; j++) {
             JA[j] += JA[j-1];
             JO[j] = JO[j-1]; //Env::end_nnz[tid-1] - Env::offset_nnz[tid-1];
+         //   if(j == 511)
+           //     printf("11111: %d\n", JA[j]);
         }
         
         
     }
-    printf("tid=%d st=%d end=%d len=%d nnz=%d z=%d\n", tid, Env::start_nnz[tid], Env::end_nnz[tid], Env::end_nnz[tid] - Env::start_nnz[tid], Env::offset_nnz[tid], Env::end_nnz[tid] - Env::offset_nnz[tid]);
-    printf("tid=%d ja=%d jo=%d\n", tid, JA[start_col], JO[start_col]);
+    
+    //2638
+    //if(tid==0)
+    //printf("tid= %d: %d %d %d %d %d %d\n", tid, end_col, JA[end_col-1], JA[end_col], JA[end_col-1] - JA[end_col-2], JA[end_col] - JA[end_col-1], JA[end_col+1] - JA[end_col]);
+    //printf("%d %d\n", tid, Env::indices_nnz[tid]);
+    //if(tid==0)
+    //printf("tid=%d st=%lu end=%lu st=%lu end=%lu len=%lu off=%lu nnz=%lu z=%lu\n", tid, Env::start_col[tid], Env::end_col[tid], Env::start_nnz[tid], Env::end_nnz[tid], Env::end_nnz[tid] - Env::start_nnz[tid], Env::offset_nnz[tid], Env::offset_nnz[tid] - Env::start_nnz[tid], Env::end_nnz[tid] - Env::offset_nnz[tid]);
+    //printf("tid=%d ja=%d jo=%d\n", tid, JA[start_col], JO[start_col]);
     if((tid == Env::nthreads - 1)) {
-        JA[end_col+1] += JA[end_col];
+        JA[end_col] += JA[end_col-1];
         //JA[0] = 0;
      //   end_col++;
     }
    // if(tid == 0)
-     //   exit(0);
-    
+    //printf("%d [%d %d] %d %d\n", tid, start_col, end_col, JA[511], JA[512]);
+//printf("%d %d %d\n", end_col, JO[end_col-1], JO[end_col-2]);
+  //     exit(0);
+    //printf("tid= %d %d\n", tid, JA[511]);
     if(tid == 0) {
         idx = 0;
         for(uint32_t i = 0; i < Env::nthreads; i++) {    
             idx += (Env::offset_nnz[i] - Env::start_nnz[i]);
         }
         nnz = idx;
-        printf(" NNNNNZZ %d\n", nnz);    
+        //printf("tid=%d %lu\n", tid, nnz);    
         //exit(0);
     }
     
@@ -919,10 +963,10 @@ template<typename Weight>
 inline void CSC<Weight>::walk() {
     double sum = 0;
     uint64_t k = 0;
-    uint64_t k1 = 0;
+    //uint64_t k1 = 0;
     for(uint32_t j = 0; j < ncols; j++) {
-        k1 += (JA[j + 1] - JA[j]);
-        //printf("j=%d jai=%d jai+1=%d joj=%d sz=%d\n", j, JA[j]+JO[j], JA[j+1]+JO[j], JO[j], JA[j + 1] - JA[j]);
+        //k1 += (JA[j + 1] - JA[j]);
+       // printf("j=%d jai=%d jai+1=%d joj=%d sz=%d\n", j, JA[j]+JO[j], JA[j+1]+JO[j], JO[j], JA[j + 1] - JA[j]);
 //        printf("j=%d, sz=%d\n", j, JA[j + 1] - JA[j]);
         for(uint32_t i = JA[j]+JO[j]; i < JA[j + 1]+JO[j]; i++) {
             IA[i];
@@ -935,7 +979,7 @@ inline void CSC<Weight>::walk() {
         //if(j == 300)
         //    break;
     }
-    printf("Checksum=%f, Count=%lu %lu\n", sum, k, k1);
+    printf("Checksum=%f, Count=%lu\n", sum, k);
 }
 
 enum Compression_Type{ 
@@ -994,7 +1038,7 @@ CompressedSpMat<Weight>::CompressedSpMat(uint32_t nrows_, uint32_t ncols_, uint6
 template<typename Weight>
 CompressedSpMat<Weight>::~CompressedSpMat() {
     if(type == csc_fmt) {
-        printf("11111\n");
+        //printf("11111\n");
         delete csc;
     }
     else if(type == dcsc_fmt) {
