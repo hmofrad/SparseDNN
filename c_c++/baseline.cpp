@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
     featuresTriples.shrink_to_fit();
     //delete featuresSpMat;
     //exit(0);
+    //printf("XXXXXXXXXXXXXXXXXXXXXX\n");
     uint32_t maxLayers = atoi(argv[4]);
     std::vector<uint32_t> maxLayersVector = {120, 480, 1920};
     std::ptrdiff_t idxL = std::distance(maxLayersVector.begin(), std::find(maxLayersVector.begin(), maxLayersVector.end(), maxLayers));
