@@ -365,7 +365,7 @@ inline void DCSC<Weight>::walk() {
 template<typename Weight>
 struct CSC {
     public:
-        CSC() { nrows = 0, ncols = 0; nnz = 0;  nbytes = 0; idx = 0; JA = nullptr; JO = nullptr; IA = nullptr; A = nullptr; }
+        CSC() { nrows = 0, ncols = 0; nnz = 0;  nbytes = 0; idx = 0; JA = nullptr; IA = nullptr; A = nullptr; }
         CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_aligned_ = true);
         CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<struct Triple<Weight>> &triples, bool page_aligned_ = true);
         ~CSC();
@@ -377,6 +377,7 @@ struct CSC {
         inline void postpopulate_t();
         inline void postpopulate_t(int tid);
         inline void repopulate(struct CSC<Weight> *other_csc);
+        inline void repopulate(struct CSC<Weight> *other_csc, int tid);
         inline void repopulate_t();
         inline void spapopulate(struct DenseVec<Weight> *x_vector, struct DenseVec<Weight> *spa_vector, uint32_t col_idx);
         inline void spapopulate(struct DenseVec<Weight> *spa_vector, uint32_t col_idx);
@@ -392,15 +393,16 @@ struct CSC {
         uint32_t ncols;
         uint64_t nnz;
         uint64_t nnzmax;
+        //uint64_t nnzmin;
         uint64_t nbytes;
         uint64_t idx;
         uint32_t *JA; // Cols
-        uint32_t *JO; // Offsets
+        //uint32_t *JO; // Offsets
         uint32_t *IA; // Rows
         Weight   *A;  // Vals
         struct Data_Block<uint32_t> *IA_blk;
         struct Data_Block<uint32_t> *JA_blk;
-        struct Data_Block<uint32_t> *JO_blk;
+        //struct Data_Block<uint32_t> *JO_blk;
         struct Data_Block<Weight>  *A_blk;
         bool page_aligned;
 };
@@ -413,12 +415,12 @@ CSC<Weight>::CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, bool page_alig
     nnzmax   = nnz_;
     page_aligned = page_aligned_;
     JA = nullptr;
-    JO = nullptr;
+    //JO = nullptr;
     IA = nullptr;
     A  = nullptr;
     if(nrows and ncols and nnz) {
         JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t), page_aligned);
-        JO_blk = new Data_Block<uint32_t>(&JO, ncols, ncols * sizeof(uint32_t), page_aligned);
+       // JO_blk = new Data_Block<uint32_t>(&JO, ncols, ncols * sizeof(uint32_t), page_aligned);
         IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned);
         A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned);
         nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
@@ -436,19 +438,23 @@ CSC<Weight>::CSC(uint32_t nrows_, uint32_t ncols_, uint64_t nnz_, std::vector<st
     nbytes = 0;
     page_aligned = page_aligned_;
     JA = nullptr;
-    JO = nullptr;
+   // JO = nullptr;
     IA = nullptr;
     A  = nullptr;
+    //printf("333333333\n");
     prepopulate(triples);
+    
     if(nrows and ncols and nnz) {
+        //printf("444444444444\n");
         JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t), page_aligned);
-        JO_blk = new Data_Block<uint32_t>(&JO, ncols, ncols * sizeof(uint32_t), page_aligned);
+        //JO_blk = new Data_Block<uint32_t>(&JO, ncols, ncols * sizeof(uint32_t), page_aligned);
         IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned);
         A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned);
-        nbytes = IA_blk->nbytes + JA_blk->nbytes + JO_blk->nbytes + A_blk->nbytes;
+        nbytes = IA_blk->nbytes + JA_blk->nbytes  + A_blk->nbytes;
         JA[0] = 0;
     }
     idx = 0;
+    //printf("55555555555\n");
     populate(triples);
 }
 
@@ -462,8 +468,8 @@ CSC<Weight>::~CSC(){
     //int nb = ncols * sizeof(uint32_t);
     //nb += (sysconf(_SC_PAGESIZE) - (nb % sysconf(_SC_PAGESIZE)));
     //printf("JO %p %d %d\n", JO, ncols * sizeof(uint32_t), nb);
-    delete JO_blk;
-    JO = nullptr;
+    //delete JO_blk;
+    //JO = nullptr;
     
     
     delete IA_blk;
@@ -491,19 +497,19 @@ inline void CSC<Weight>::initialize(uint32_t nrows_, uint32_t ncols_, uint64_t n
         //
         nrows = nrows_;
         ncols = ncols_;
-        if(nnz_ > nnzmax) {
+        //if(nnz_ > nnzmax) {
             //printf("Reinit %d %d\n", nnz_, nnzmax);
             nnz = nnz_;
             nnzmax = nnz_;
             JA_blk->reallocate(&JA, (ncols + 1), ((ncols + 1) * sizeof(uint32_t)));
-            JO_blk->reallocate(&JO, ncols, (ncols * sizeof(uint32_t)));            
+            //JO_blk->reallocate(&JO, ncols, (ncols * sizeof(uint32_t)));            
             IA_blk->reallocate(&IA, nnz, (nnz * sizeof(Weight)));
             A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
-            nbytes = JA_blk->nbytes + JO_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
+            nbytes = JA_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
             JA[0] = 0;
-        }   
+       // }   
         idx = 0;
-        nnz = nnz_;
+        //nnz = nnz_;
         clear();
         // We don not shrink
     }
@@ -513,10 +519,10 @@ inline void CSC<Weight>::initialize(uint32_t nrows_, uint32_t ncols_, uint64_t n
         nnz = nnz_;
         nnzmax = nnz_;
         JA_blk = new Data_Block<uint32_t>(&JA, (ncols + 1), (ncols + 1) * sizeof(uint32_t), page_aligned);
-        JO_blk = new Data_Block<uint32_t>(&JO, ncols, ncols * sizeof(uint32_t), page_aligned);
+        //JO_blk = new Data_Block<uint32_t>(&JO, ncols, ncols * sizeof(uint32_t), page_aligned);
         IA_blk = new Data_Block<uint32_t>(&IA, nnz, nnz * sizeof(uint32_t), page_aligned);
         A_blk  = new Data_Block<Weight>(&A,  nnz, nnz * sizeof(Weight), page_aligned);
-        nbytes = IA_blk->nbytes + JO_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
+        nbytes = IA_blk->nbytes + JA_blk->nbytes + A_blk->nbytes;
         JA[0] = 0;
         idx = 0;
     }
@@ -553,7 +559,7 @@ inline void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
                 JA[j] = JA[j - 1];
             }                  
             JA[j]++;
-            JO[j] = 0;
+            //JO[j] = 0;
             IA[i] = triple.row;
             A[i] = triple.weight;
             i++;
@@ -561,7 +567,7 @@ inline void CSC<Weight>::populate(std::vector<struct Triple<Weight>> &triples) {
         while((j + 1) <= ncols) {
             j++;
             JA[j] = JA[j - 1];
-            JO[j] = 0;
+            //JO[j] = 0;
         }
     }
 }
@@ -614,13 +620,14 @@ inline void CSC<Weight>::spapopulate(struct DenseVec<Weight> *spa_vector, uint32
 
 template<typename Weight>
 inline void CSC<Weight>::postpopulate() {
-    /*
-    nnz = idx;
+    
+    //nnz = idx;
     JA_blk->reallocate(&JA, (ncols + 1), ((ncols + 1) * sizeof(uint32_t)));
+    //JO_blk->reallocate(&JO, ncols, ncols * sizeof(uint32_t));
     IA_blk->reallocate(&IA, nnz, (nnz * sizeof(Weight)));
     A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));
     nbytes = JA_blk->nbytes + IA_blk->nbytes + A_blk->nbytes;
-    */
+    
 }
 
 template<typename Weight>
@@ -688,6 +695,7 @@ inline void CSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct
     auto &idx = Env::offset_nnz[tid];
     //auto &off = (tid == Env::nthreads - 1) ? Env::start_nnz[tid];
     
+    
     for(uint32_t i = 0; i < nrows; i++) {
         if(spa_A[i]) {
             spa_A[i] += x_A[col_idx];
@@ -707,6 +715,7 @@ inline void CSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct
             }
         }
     }
+    
     
     /*
     for(uint32_t i = 0; i < nrows; i++) {
@@ -732,23 +741,162 @@ inline void CSC<Weight>::spapopulate_t(struct DenseVec<Weight> *x_vector, struct
 
 template<typename Weight>
 inline void CSC<Weight>::postpopulate_t(int tid) {
+    uint32_t start_col = Env::start_col[tid];
+    uint32_t end_col = Env::end_col[tid];
+    
+    
+    //printf("2.%d %d\n", tid, JA[start_col]);
+    if(tid == 0) {
+        JA[0] = 0;
+        for(uint32_t j = start_col+1; j < end_col; j++) {
+            JA[j] += JA[j-1];
+            //JO[j] = 0;
+        }
+    }
+    else {
+        JA[start_col] = 0;
+        for(int32_t i = 0; i < tid; i++) {
+            JA[start_col] += (Env::offset_nnz[i] - Env::start_nnz[i]);
+            //JO[start_col] += (Env::end_nnz[i] - Env::offset_nnz[i]);
+        }
+        
+        for(uint32_t j = start_col+1; j < end_col; j++) {
+            JA[j] += JA[j-1];
+            //JO[j] = JO[j-1]; 
+        }
+    }
+    
+    if((tid == Env::nthreads - 1)) {
+        JA[end_col] += JA[end_col-1];
+    }
+    
+    
+    if(tid == 0) {
+        idx = 0;
+        for(uint32_t i = 0; i < Env::nthreads; i++) {    
+            idx += (Env::offset_nnz[i] - Env::start_nnz[i]);
+        }
+        //printf("tid=%d oid=%lu\n", tid, idx);
+    }
+    /*
+    #pragma omp barrier
+    for(uint32_t j = 0; j < 1025; j++) {
+        printf("%d %d\n", j, JO[j]);
+    }
+    */
+    //printf("HERE|\n");
+    //exit(0);
+}
+
+
+template<typename Weight>
+inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc, int tid){
+    uint32_t o_ncols = other_csc->numcols();
+    uint32_t o_nnz = other_csc->numnonzeros();
+    uint32_t o_idx = other_csc->idx;
+    uint32_t *o_JA = other_csc->JA;
+    //uint32_t *o_JO = other_csc->JO;
+    uint32_t *o_IA = other_csc->IA;
+    Weight   *o_A  = other_csc->A;
+    
+    if(ncols != o_ncols) {
+        fprintf(stderr, "Error: Cannot repopulate CSC\n");
+        exit(1);
+    }
+   // printf("nnz = %lu, oid=%lu\n", nnz, o_idx);
+    //exit(0);
+
+    if(!tid) {
+        nnz = o_idx;
+        nnzmax = o_idx;
+        //if(nnz < o_idx) {
+            IA_blk->reallocate(&IA, nnz, (nnz * sizeof(uint32_t)));
+            A_blk->reallocate(&A, nnz, (nnz * sizeof(Weight)));            
+            
+        //}
+        
+        clear();
+    }
+    #pragma omp barrier
     
     uint32_t start_col = Env::start_col[tid];
     uint32_t end_col = Env::end_col[tid];
+    uint64_t offset = 0;
+    auto &idx = Env::indices_nnz[tid];
+    JA[start_col] = 0;
+    if(tid) {
+        for(int32_t i = 0; i < tid; i++) {
+            JA[start_col] += (Env::offset_nnz[i] - Env::start_nnz[i]);
+            offset += (Env::end_nnz[i] - Env::offset_nnz[i]);
+            idx += JA[start_col];//(Env::end_nnz[i] - Env::offset_nnz[i]);
+        }
+    }
+    
+    //printf("%d %lu %d\n", tid, idx, JA[start_col]);
+    
+    //idx = 
+    for(uint32_t j = start_col; j < end_col; j++) {
+        JA[j+1] = JA[j];
+        for(uint32_t i = o_JA[j] + offset; i < o_JA[j + 1] + offset; i++) {
+            //if(o_A[i]) {
+                JA[j+1]++;
+                IA[idx] = o_IA[i];
+                A[idx]  = o_A[i];
+                idx++;
+            //} 
+        }
+    }
+    
+    
+   // if((tid == Env::nthreads - 1)) {
+     //   JA[end_col] += JA[end_col-1];
+    //}
+
     /*
+    idx = 0;
+    for(uint32_t j = 0; j < o_ncols; j++) {
+        JA[j+1] = JA[j];
+        for(uint32_t i = o_JA[j]; i < o_JA[j + 1]; i++) {
+            if(o_A[i]) {
+                JA[j+1]++;
+                IA[idx] = o_IA[i];
+                A[idx]  = o_A[i];
+                idx++;
+            }
+        }
+    }
+    */
+    //printf("1111111111111111111 %d\n", tid);
+    //#pragma omp barrier
+    //if(!tid) {
+      //  postpopulate();   
+    //}
+    //#pragma omp barrier
+    //printf("2222222222222222222 %d\n", tid);
+}
+
+
+
+/*
+template<typename Weight>
+inline void CSC<Weight>::postpopulate_t(int tid) {
+    
+    uint32_t start_col = Env::start_col[tid];
+    uint32_t end_col = Env::end_col[tid];
+    
     uint32_t start_nnz = Env::start_nnz[tid];
     uint32_t end_nnz = Env::end_nnz[tid];
     uint32_t length_nnz = Env::length_nnz[tid];
     uint32_t offset_nnz = Env::offset_nnz[tid];
-    */
+    
     //printf("%d %lu %lu %lu %lu %lu %lu %lu\n", tid, Env::start_col[tid], Env::end_col[tid], Env::start_nnz[tid], Env::end_nnz[tid], Env::length_nnz[tid], Env::offset_nnz[tid], Env::start_nnz[tid] - Env::offset_nnz[tid]); 
-    /*
+    
     if(tid == 3) {
      for(uint32_t j = start_col; j < end_col; j++) {
         printf("%d %d\n", j, JA[j]);         
     }
     }
-    */
+    
     
     //printf("1.%d %d %d\n", tid, start_col, JA[start_col]);
     
@@ -775,7 +923,7 @@ inline void CSC<Weight>::postpopulate_t(int tid) {
             //}
             
             JA[j] += JA[j-1];
-            JO[j] = 0;
+            //JO[j] = 0;
             //if(j == 511)
               //  printf("00000: %d %d\n", JA[j], end_col);
         }
@@ -788,14 +936,14 @@ inline void CSC<Weight>::postpopulate_t(int tid) {
         for(int32_t i = 0; i < tid; i++) {
             JA[start_col] += (Env::offset_nnz[i] - Env::start_nnz[i]);
             //JA[start_col] = (Env::offset_nnz[i]);
-            JO[start_col] += (Env::end_nnz[i] - Env::offset_nnz[i]);
+            //JO[start_col] += (Env::end_nnz[i] - Env::offset_nnz[i]);
             
         }
         
         //printf(">>>tid=%d ja=%d jo=%d\n", tid, JA[start_col], JO[start_col]);
         for(uint32_t j = start_col+1; j < end_col; j++) {
             JA[j] += JA[j-1];
-            JO[j] = JO[j-1]; //Env::end_nnz[tid-1] - Env::offset_nnz[tid-1];
+            //JO[j] = JO[j-1]; //Env::end_nnz[tid-1] - Env::offset_nnz[tid-1];
          //   if(j == 511)
            //     printf("11111: %d\n", JA[j]);
         }
@@ -833,7 +981,7 @@ inline void CSC<Weight>::postpopulate_t(int tid) {
     
 
 //printf("%d\n", nnz);
-    /*
+    
     else if((tid == Env::ntthreads - 1)) {
         
     }
@@ -846,12 +994,11 @@ inline void CSC<Weight>::postpopulate_t(int tid) {
         JA[j] += JA[j-1];
     }
     
-    */
     
     
     //exit(0);
     
-    /*
+    
     if(tid == 0) {
         JA[0] = 0;
         for(uint32_t j = start_col+1; j < end_col; j++) {
@@ -871,16 +1018,15 @@ inline void CSC<Weight>::postpopulate_t(int tid) {
     else {
         
     }
-    */
     
     
-    /*
+    
+    
         JA[0] = 0;
         for(uint32_t j = start+1; j < end; j++) {
             JA[j] += JA[j-1];
         }
-        */
-        /*
+
     uint32_t start = Env::start[tid];
     uint32_t end = Env::end[tid];
     uint32_t offset = Env::offset[tid];
@@ -907,8 +1053,9 @@ inline void CSC<Weight>::postpopulate_t(int tid) {
         length += Env::length[i];
     }
     nnz = idx;
-    */
+    
 }
+*/
 
 template<typename Weight>
 inline void CSC<Weight>::postpopulate_t() {
@@ -954,7 +1101,7 @@ inline void CSC<Weight>::repopulate_t() {
 template<typename Weight>
 inline void CSC<Weight>::clear() {
     JA_blk->clear();
-    JO_blk->clear();
+    //JO_blk->clear();
     IA_blk->clear();
     A_blk->clear();
 }    
@@ -967,8 +1114,9 @@ inline void CSC<Weight>::walk() {
     for(uint32_t j = 0; j < ncols; j++) {
         //k1 += (JA[j + 1] - JA[j]);
        // printf("j=%d jai=%d jai+1=%d joj=%d sz=%d\n", j, JA[j]+JO[j], JA[j+1]+JO[j], JO[j], JA[j + 1] - JA[j]);
-//        printf("j=%d, sz=%d\n", j, JA[j + 1] - JA[j]);
-        for(uint32_t i = JA[j]+JO[j]; i < JA[j + 1]+JO[j]; i++) {
+        //printf("%d %d\n", j, JA[j + 1] - JA[j]);
+        for(uint32_t i = JA[j]; i < JA[j + 1]; i++) {
+        //for(uint32_t i = JA[j]+JO[j]; i < JA[j + 1]+JO[j]; i++) {
             IA[i];
             A[i];
             sum += A[i];
