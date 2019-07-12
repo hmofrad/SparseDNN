@@ -93,15 +93,18 @@ void inferenceReLU(std::vector<struct CompressedSpMat<Weight>*> &layersSpMat, st
             nrows = Y_CSC->nrows;
             //if(r < 1)
             nnzmax = SpMM_Sym<Weight>(Y, W, s);
+            //printf("%d:nnzmax=%lu\n", r, nnzmax);
             auto *Z_CSC = Z->csc;
             Z_CSC->initialize(nrows, ncols, nnzmax);
+            //printf("NOW INIT\n");
             SpMM<Weight>(Y, W, Z, B, s);
+            //printf("DONE INIT\n");
             //Y_CSC->repopulate(Z_CSC);
             
             //Z_CSC->walk();
-            Y_CSC->walk();
-            printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
-            printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
+            //Y_CSC->walk();
+            //printf("%d.Y_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Y_CSC->numrows(), Y_CSC->numcols(), Y_CSC->numnonzeros()); 
+            //printf("%d.Z_CSC: nrows=%d ncols=%d nnz=%lu\n", r, Z_CSC->numrows(), Z_CSC->numcols(), Z_CSC->numnonzeros()); 
             //exit(0);
         } 
         delete Z;
