@@ -31,7 +31,7 @@ DATA_PERFIX="/zfs1/cs3580_2017F/moh18/sdnn/data/"
 NEURONS=("1024")
 #NEURONS=("1024" "4096" "16384" "65536")
 LAYERS=("120" "480" "1920")
-#THREADS=("1" "8" "14" "28")
+#THREADS=("1" "2" "4" "6" "8" "10" "12")
 
 for N in "${NEURONS[@]}"
 do
