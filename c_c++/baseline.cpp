@@ -25,8 +25,6 @@
 #include "InferenceReLU.cpp"
 #include "Env.hpp"
 
-//std::vector<
-
 using WGT = double; 
 Compression_Type CT = Compression_Type::csc_fmt;
 int main(int argc, char **argv) {
@@ -54,13 +52,6 @@ int main(int argc, char **argv) {
         exit(1);
     }
     
-    //Env::init();
-    
-    
-    
-    //exit(0);
-    
-    
     uint64_t nrowsFeatures = 0; 
     uint64_t ncolsFeatures = 0;
     std::vector<struct Triple<WGT>> featuresTriples;
@@ -71,7 +62,6 @@ int main(int argc, char **argv) {
         iss.clear();
         iss.str(line);
         iss >> featuresTriple.row >> featuresTriple.col >> featuresTriple.weight;
-        //iss >> featuresTriple.col >> featuresTriple.row >> featuresTriple.weight;
         featuresTriples.push_back(featuresTriple);
         if(featuresTriple.row > nrowsFeatures)
             nrowsFeatures = featuresTriple.row;
@@ -83,13 +73,9 @@ int main(int argc, char **argv) {
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrowsFeatures, ncolsFeatures, featuresTriples.size());
     uint64_t NfeatureVectors = nrowsFeatures;
     struct CompressedSpMat<WGT> *featuresSpMat = new struct CompressedSpMat<WGT>((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
-    //struct CompressedSpMat<WGT> *featuresSpMat1 = new struct CompressedSpMat<WGT>((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
-    //struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, CT);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
-    //delete featuresSpMat;
-    //exit(0);
-    //printf("XXXXXXXXXXXXXXXXXXXXXX\n");
+    
     uint32_t maxLayers = atoi(argv[4]);
     std::vector<uint32_t> maxLayersVector = {120, 480, 1920};
     std::ptrdiff_t idxL = std::distance(maxLayersVector.begin(), std::find(maxLayersVector.begin(), maxLayersVector.end(), maxLayers));
@@ -126,7 +112,7 @@ int main(int argc, char **argv) {
     struct Triple<WGT> layerTriple;  
     std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
-    //maxLayers = 1;
+
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
@@ -167,7 +153,6 @@ int main(int argc, char **argv) {
         }
         
         biasesDenseVec.push_back(biaseDenseVec);
-
     } 
 
     auto finish = std::chrono::high_resolution_clock::now();
