@@ -23,8 +23,8 @@ class Env {
 
         static void init();
         static int env_get_num_threads();
-        static void env_unset_offset();
-        static void env_set_offset();
+        static void env_unset(int tid);
+        static uint64_t env_set();
 };
 int Env::nthreads = 0;
 std::vector<uint64_t> Env::start_col;
@@ -55,33 +55,36 @@ int Env::env_get_num_threads() {
     return(nthreads_);
 }    
 
-void Env::env_unset_offset() {    
-    for(uint32_t i = 0; i < Env::nthreads; i++) {   
-        start_col[i] = 0;
-        end_col[i] = 0;
-        start_nnz[i] = 0;
-        end_nnz[i] = 0;
-        offset_nnz[i] = 0;
-        indices_nnz[i] = 0;
-        length_nnz[i] = 0;
-    }
+void Env::env_unset(int tid) {    
+    //for(uint32_t i = 0; i < Env::nthreads; i++) {   
+        start_col[tid] = 0;
+        end_col[tid] = 0;
+        start_nnz[tid] = 0;
+        end_nnz[tid] = 0;
+        offset_nnz[tid] = 0;
+        indices_nnz[tid] = 0;
+        length_nnz[tid] = 0;
+    //}
 }
 
-void Env::env_set_offset() {    
+uint64_t Env::env_set() {  
     for(uint32_t i = 0; i < Env::nthreads; i++) {   
-        start_nnz[0] = 0;
-        end_nnz[0] = 0;
+        start_nnz[i] = 0;
+        end_nnz[i] = 0;
         offset_nnz[i] = 0;
         indices_nnz[i] = 0;
     }
     offset_nnz[0] = 0;
     start_nnz[0] = 0;
     end_nnz[0] = length_nnz[0];
+    uint64_t nnzmax = length_nnz[0];
     for(uint32_t i = 1; i < Env::nthreads; i++) {
         start_nnz[i] = end_nnz[i-1];
         end_nnz[i] = start_nnz[i] + length_nnz[i];
         offset_nnz[i] = start_nnz[i];
+        nnzmax += length_nnz[i];
     }
+    return(nnzmax);
 }
 
 #endif 
