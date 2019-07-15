@@ -1,7 +1,7 @@
 /*
  * SparseOps.cpp: Sparse Matrix operations
  * Sparse Matrix - Sparse Matrix (SpMM)
- * (C) Mohammad Hasanzadeh Mofrad, 2019
+ * (c) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@gmail.com
  */
  
