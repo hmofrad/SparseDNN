@@ -1,5 +1,8 @@
 # SparseDNN
-Sparse Deep Neural Network Implementation written in c_c++ for MIT/IEEE/Amazon GraphChallenge.org
+Sparse Deep Neural Network Implementation written in c_c++ for MIT/IEEE/Amazon GraphChallenge.org.
+
+Please see c_c++ folder for our implementation and matlab for the baseline code provided by the challenge.
+
 
     https://graphchallenge.mit.edu/
 
