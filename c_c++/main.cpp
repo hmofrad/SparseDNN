@@ -13,14 +13,11 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
-#include <set>
 #include <chrono>
-#include <omp.h>
 
 #include "Triple.hpp"
 #include "DenseVec.hpp"
 #include "SparseMat.hpp"
-#include "SparseOps.cpp"
 #include "InferenceReLU.cpp"
 #include "Env.hpp"
 
@@ -111,7 +108,7 @@ int main(int argc, char **argv) {
     struct Triple<WGT> layerTriple;  
     std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
-
+    //maxLayers = 1;
     printf("INFO: Start reading %d layer files\n", maxLayers);
     auto start = std::chrono::high_resolution_clock::now();
     for(uint32_t i = 0; i < maxLayers; i++) {  
