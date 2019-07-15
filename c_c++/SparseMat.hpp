@@ -222,7 +222,6 @@ inline void CSC<Weight>::spapopulate(struct DenseVec<Weight> *spa_vector, uint32
     }
 }
 
-
 template<typename Weight>
 inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc){
     uint32_t o_ncols = other_csc->numcols();
@@ -317,7 +316,6 @@ inline void CSC<Weight>::postpopulate_t(int tid) {
         }
     }
 }
-
 
 template<typename Weight>
 inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc, int tid){
