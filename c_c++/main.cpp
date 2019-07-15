@@ -22,7 +22,6 @@
 #include "Env.hpp"
 
 using WGT = double; 
-Compression_Type CT = Compression_Type::csc_fmt;
 int main(int argc, char **argv) {
     printf("INFO: Welcome to Sparse Deep Neural Network Implementation\n");
     
@@ -68,7 +67,7 @@ int main(int argc, char **argv) {
     printf("INFO: Done  reading the features file %s\n", featuresFile.c_str());
     printf("INFO: Features file is %lu x %lu, nnz=%lu\n", nrowsFeatures, ncolsFeatures, featuresTriples.size());
     uint64_t NfeatureVectors = nrowsFeatures;
-    struct CompressedSpMat<WGT> *featuresSpMat = new struct CompressedSpMat<WGT>((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples, CT);
+    struct CSC<WGT> *featuresSpMat = new struct CSC<WGT>((nrowsFeatures + 1), (Nneurons + 1), featuresTriples.size(), featuresTriples);
     featuresTriples.clear();
     featuresTriples.shrink_to_fit();
     
@@ -106,7 +105,8 @@ int main(int argc, char **argv) {
     
     std::vector<struct Triple<WGT>> layerTriples;
     struct Triple<WGT> layerTriple;  
-    std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
+    std::vector<struct CSC<WGT>*> layersSpMat;
+    //std::vector<struct CompressedSpMat<WGT>*> layersSpMat;
     std::vector<struct DenseVec<WGT>*> biasesDenseVec;
     //maxLayers = 1;
     printf("INFO: Start reading %d layer files\n", maxLayers);
@@ -136,8 +136,7 @@ int main(int argc, char **argv) {
         }
         fin.close();
         DNNedges += layerTriples.size();
-
-        struct CompressedSpMat<WGT> *layerSpMat = new struct CompressedSpMat<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples, CT);
+        struct CSC<WGT> *layerSpMat = new struct CSC<WGT>((Nneurons + 1), (ncols + 1), layerTriples.size(), layerTriples);
         layersSpMat.push_back(layerSpMat);
         layerTriples.clear();
         layerTriples.shrink_to_fit();
@@ -161,13 +160,13 @@ int main(int argc, char **argv) {
     Env::init();
     
     start = std::chrono::high_resolution_clock::now();
-    inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat, CT); /* Train DNN */
+    inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat); /* Train DNN */
     finish = std::chrono::high_resolution_clock::now();
     WGT challengeRunTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
     WGT challengeRunRate = NfeatureVectors * (DNNedges/challengeRunTime);
     printf("INFO: Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
     
-    validate_prediction<WGT>(featuresSpMat, trueCategories, CT); /* Test DNN */
+    validate_prediction<WGT>(featuresSpMat, trueCategories); /* Test DNN */
     
     delete featuresSpMat;
     for(uint32_t i = 0; i < maxLayers; i++) {  
