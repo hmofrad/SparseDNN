@@ -59,7 +59,6 @@ void Data_Block<Data_Type>::allocate() {
             exit(1);
         }
         memset(ptr, 0,  nbytes); 
-       // printf("%p %d\n", ptr, nbytes);
     }
 }
 
@@ -70,20 +69,7 @@ void Data_Block<Data_Type>::reallocate(Data_Type** ptr_, uint64_t nitems_, uint6
             uint64_t new_nbytes = nbytes_;
             new_nbytes += (PAGE_SIZE - (new_nbytes % PAGE_SIZE));
             uint64_t old_nbytes = nbytes;
-            /*
-            if(old_nbytes != new_nbytes) {
-                deallocate();
-                if((ptr = (Data_Type*) mmap(nullptr, new_nbytes, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0)) == (void*) -1) {  
-                    fprintf(stderr, "Error: Cannot map memory\n");
-                    exit(1);
-                }
-                memset(ptr, 0,  new_nbytes); 
-                nitems = nitems_;
-                nbytes = new_nbytes;
-                *ptr_ = ptr; 
-            }
-            */
-            
+
             if(old_nbytes != new_nbytes) {
                 if((ptr = (Data_Type*) mremap(ptr, old_nbytes, new_nbytes, MREMAP_MAYMOVE)) == (void*) -1) { 
                     fprintf(stderr, "Error: Cannot remap memory\n");
@@ -103,9 +89,7 @@ void Data_Block<Data_Type>::reallocate(Data_Type** ptr_, uint64_t nitems_, uint6
 
 template<typename Data_Type>
 void Data_Block<Data_Type>::deallocate() {
-    //printf("1.%p %d\n", ptr, nbytes);
     if(ptr and nbytes) {
-      //  printf("2.%p %d\n", ptr, nbytes);
         if((munmap(ptr, nbytes)) == -1) {
             fprintf(stderr, "Error: Cannot unmap memory\n");
             exit(1);
