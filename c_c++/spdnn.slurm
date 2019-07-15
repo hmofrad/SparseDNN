@@ -28,23 +28,21 @@ export OMP_PLACES=cores
 export OMP_PROC_BIND=close
 
 DATA_PERFIX="/zfs1/cs3580_2017F/moh18/sdnn/data/"
-NEURONS=("1024")
-#NEURONS=("1024" "4096" "16384" "65536")
+NEURONS=("1024" "4096" "16384" "65536")
 LAYERS=("120" "480" "1920")
-#THREADS=("1" "2" "4" "6" "8" "10" "12")
+THREADS=("1" "2" "4" "6" "8" "10" "12")
 
 for N in "${NEURONS[@]}"
 do
     for L in "${LAYERS[@]}"
     do
- #       for T in "${THREADS[@]}"
-   #         do
-#	    export OMP_NUM_THREADS=${T}
-	    echo ${T}
+        for T in "${THREADS[@]}"
+            do
+            export OMP_NUM_THREADS=${T}
             CMD="./baseline -n ${N} -l ${L} ${DATA_PERFIX}/MNIST/ ${DATA_PERFIX}/DNN/"
             echo "Command=${CMD}"
             ${CMD}
-  #      done
+        done
     done
 done
 exit;
