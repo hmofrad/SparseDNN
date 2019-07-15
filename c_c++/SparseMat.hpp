@@ -1,7 +1,7 @@
 /*
  * SparseMat.hpp: Sparse Matrix formats
  * Compressed Sparse Column (CSC)
- * (C) Mohammad Hasanzadeh Mofrad, 2019
+ * (c) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@gmail.com
  */
  
