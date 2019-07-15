@@ -56,15 +56,13 @@ int Env::env_get_num_threads() {
 }    
 
 void Env::env_unset(int tid) {    
-    //for(uint32_t i = 0; i < Env::nthreads; i++) {   
-        start_col[tid] = 0;
-        end_col[tid] = 0;
-        start_nnz[tid] = 0;
-        end_nnz[tid] = 0;
-        offset_nnz[tid] = 0;
-        indices_nnz[tid] = 0;
-        length_nnz[tid] = 0;
-    //}
+    start_col[tid] = 0;
+    end_col[tid] = 0;
+    start_nnz[tid] = 0;
+    end_nnz[tid] = 0;
+    offset_nnz[tid] = 0;
+    indices_nnz[tid] = 0;
+    length_nnz[tid] = 0;
 }
 
 uint64_t Env::env_set() {  
