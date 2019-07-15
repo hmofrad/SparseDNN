@@ -1,5 +1,5 @@
 /*
- * env.cpp: Multithreading environment 
+ * Env.cpp: Multithreading environment 
  * (C) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@gmail.com
  */
@@ -81,15 +81,7 @@ void Env::env_set_offset() {
         start_nnz[i] = end_nnz[i-1];
         end_nnz[i] = start_nnz[i] + length_nnz[i];
         offset_nnz[i] = start_nnz[i];
-        //offset_nzz[i] = (length_nnz[-1] + offset_nnz[i-1]);
-        
     }
-    /*
-    for(uint32_t i = 0; i < Env::nthreads; i++) {
-        printf("%lu %lu %lu %lu %lu %lu\n", start_col[i], end_col[i], start_nnz[i], end_nnz[i], length_nnz[i], offset_nnz[i]);
-    }
-    */
-    //exit(0);
 }
 
 #endif 
