@@ -1,5 +1,5 @@
 # SparseDNN
-Sparse Deep Neural Network Training and Building written in C/C++.
+Sparse Deep Neural Network Training and Building written in C/C++
 
 ## Build
     make clean && make
