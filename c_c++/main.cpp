@@ -158,9 +158,16 @@ int main(int argc, char **argv) {
     printf("INFO: Read time (sec): %f, read rate (edges/sec): %f\n", readLayerTime, readLayerRate);
     
     Env::init();
+    std::vector<struct DenseVec<WGT>*> spa_VEC;
+    for(uint32_t i = 0; i < Env::nthreads; i++) {
+        struct DenseVec<WGT> *spa_DVEC = new struct DenseVec<WGT>(nrowsFeatures + 1);
+        spa_VEC.push_back(spa_DVEC);
+    }
+    
+    
     
     start = std::chrono::high_resolution_clock::now();
-    inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat); /* Train DNN */
+    inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat, spa_VEC); /* Train DNN */
     finish = std::chrono::high_resolution_clock::now();
     WGT challengeRunTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
     WGT challengeRunRate = NfeatureVectors * (DNNedges/challengeRunTime);
@@ -173,5 +180,12 @@ int main(int argc, char **argv) {
         delete layersSpMat[i];
         delete biasesDenseVec[i];
     }
+    
+    for(uint32_t i = 0; i < Env::nthreads; i++) {
+        delete spa_VEC[i];
+    }
+    spa_VEC.clear();
+    spa_VEC.shrink_to_fit();
+    
     return(0);
 }
