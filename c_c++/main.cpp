@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <set>
 #include <chrono>
-
 #include <omp.h>
 
 #include "Triple.hpp"
@@ -165,15 +164,15 @@ int main(int argc, char **argv) {
     Env::init();
     
     start = std::chrono::high_resolution_clock::now();
-    inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat, CT);
+    inferenceReLU<WGT>(layersSpMat, biasesDenseVec, featuresSpMat, CT); /* Train DNN */
     finish = std::chrono::high_resolution_clock::now();
     WGT challengeRunTime = (WGT)(std::chrono::duration_cast< std::chrono::nanoseconds>(finish-start).count())/1e9;
     WGT challengeRunRate = NfeatureVectors * (DNNedges/challengeRunTime);
     printf("INFO: Run time (sec): %f, run rate (edges/sec): %f\n", challengeRunTime, challengeRunRate);
     
-    validate_prediction<WGT>(featuresSpMat, trueCategories, CT);
+    validate_prediction<WGT>(featuresSpMat, trueCategories, CT); /* Test DNN */
+    
     delete featuresSpMat;
-    //delete featuresSpMat1;
     for(uint32_t i = 0; i < maxLayers; i++) {  
         delete layersSpMat[i];
         delete biasesDenseVec[i];
