@@ -348,8 +348,9 @@ inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc, int tid){
     uint64_t idx = 0;
     JA[start_col] = 0;
     if(tid) {
+        JA[start_col] = o_JA[start_col];
         for(int32_t i = 0; i < tid; i++) {
-            JA[start_col] += (Env::offset_nnz[i] - Env::start_nnz[i]);
+            //JA[start_col] += (Env::offset_nnz[i] - Env::start_nnz[i]);
             offset += (Env::end_nnz[i] - Env::offset_nnz[i]);
         }
         idx = JA[start_col];
@@ -365,8 +366,6 @@ inline void CSC<Weight>::repopulate(struct CSC<Weight> *other_csc, int tid){
         }
     }
 }
-
-
 
 template<typename Weight>
 inline void CSC<Weight>::clear() {
