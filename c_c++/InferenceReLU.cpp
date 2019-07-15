@@ -18,63 +18,24 @@ void inferenceReLU(std::vector<struct CSC<Weight>*> &layersSpMat, std::vector<st
     auto &B1 = biasesDenseVec;
     auto *Y0 = featuresSpMat;
     auto *Y_CSC = Y0;
-    
-    /*
-    std::vector<struct DenseVec<Weight>*> spa_VEC;
-    for(uint32_t i = 0; i < Env::nthreads; i++) {
-        struct DenseVec<Weight> *spa_DVEC = new struct DenseVec<Weight>(Y0->nrows);
-        spa_VEC.push_back(spa_DVEC);
-    }
-    */
-   // auto &s = spa_VEC;
-    
+
     uint32_t nrows = 0;
     uint32_t ncols = 0;
-    uint64_t nnzmax = 0;
-    
+    uint64_t nnzmax = 0;    
     struct CSC<Weight> *Z_CSC = new struct CSC<Weight>(nrows, ncols, nnzmax);
     #pragma omp parallel
-        {
-    for(uint32_t r = 0; r < maxLayers; r++) {
-        
-        
-            int nthreads = omp_get_num_threads();
-            int tid = omp_get_thread_num();
-            //printf("%d/%d\n", tid,nthreads);
+    {
+        int nthreads = omp_get_num_threads();
+        int tid = omp_get_thread_num();
+        for(uint32_t r = 0; r < maxLayers; r++) {
             auto *W_CSC = W0[r];
-            //ncols = W_CSC->ncols;
             auto *B = B1[r];
-            //nrows = Y_CSC->nrows;
             auto &s = spa_VEC[tid];
-            //nnzmax = 
             SpMM_Sym<Weight>(Y_CSC, W_CSC, Z_CSC, s, tid);
             SpMM<Weight>(Y_CSC, W_CSC, Z_CSC, s, B, tid);
-            //printf("nnzmax = %lu\n", nnzmax);
-            /*
-            
-            */
-            //exit(0);
-            /*
-            auto *W_CSC = W0[r];
-            ncols = W_CSC->ncols;
-            auto *B = B1[r];
-            nrows = Y_CSC->nrows;
-            nnzmax = SpMM_Sym<Weight>(Y_CSC, W_CSC, s);
-            Z_CSC->initialize(nrows, ncols, nnzmax);
-
-            SpMM<Weight>(Y_CSC, W_CSC, Z_CSC, B, s);
-            */
-            
         }
     } 
     delete Z_CSC;        
-    /*
-    for(uint32_t i = 0; i < Env::nthreads; i++) {
-        delete spa_VEC[i];
-    }
-    spa_VEC.clear();
-    spa_VEC.shrink_to_fit();
-    */
 }
 
 template<typename Weight>
