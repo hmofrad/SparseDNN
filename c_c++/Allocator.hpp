@@ -2,7 +2,7 @@
  * Allocator.hpp: Allocate/deallocate contiguous region of memory using mmap
  * Expand/Shrink of an already allocated memory chunk using mremap
  * To keep the realloced memory valid, we always return the new virtual address
- * (C) Mohammad Hasanzadeh Mofrad, 2019
+ * (c) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@gmail.com
  */
 
