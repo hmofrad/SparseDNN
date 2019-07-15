@@ -1,7 +1,7 @@
 /*
  * main.cpp: Driver code for running Sparse Deep Neural Network 
  * for Radix-Net sparse DNN generator
- * (C) Mohammad Hasanzadeh Mofrad, 2019
+ * (c) Mohammad Hasanzadeh Mofrad, 2019
  * (e) m.hasanzadeh.mofrad@gmail.com
  */
 
