@@ -180,6 +180,10 @@ int main(int argc, char **argv) {
         delete layersSpMat[i];
         delete biasesDenseVec[i];
     }
+    layersSpMat.clear();
+    layersSpMat.shrink_to_fit();
+    biasesDenseVec.clear();
+    biasesDenseVec.shrink_to_fit();
     
     for(uint32_t i = 0; i < Env::nthreads; i++) {
         delete spa_VEC[i];
