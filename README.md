@@ -1,5 +1,5 @@
 # Distributed Sparse DNN Infeence
-If you are here please check out our latest distributed implementation as well (https://github.com/hmofrad/DistSparseDNN).
+If you are here please check out our latest distributed implementation at: https://github.com/hmofrad/DistSparseDNN
 
 # SparseDNN (single node)
 Sparse Deep Neural Network Implementation for MIT/IEEE/Amazon GraphChallenge.org. Please see c_c++ folder for our single node multithreaded implementation in C/C++ and matlab folder for the serial Matlab code provided by the challenge.
